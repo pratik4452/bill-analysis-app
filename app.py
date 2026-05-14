@@ -95,7 +95,7 @@ if uploaded_file:
 
         # ---------------------------------------------------
         # DEBUG PDF TEXT
-        # Uncomment if needed
+        # Uncomment below if needed
         # ---------------------------------------------------
 
         # st.text(text)
@@ -172,25 +172,106 @@ if uploaded_file:
         # TOD ZONE VALUES
         # ---------------------------------------------------
 
-        a_zone = extract_value(
+        a_zone = ""
+        b_zone = ""
+        c_zone = ""
+        d_zone = ""
+
+        # A ZONE
+
+        a_patterns = [
+
             r'A\s*Zone\s*([\d,\.]+)',
-            text
-        )
+            r'A\s*\n\s*Zone\s*\n\s*([\d,\.]+)',
+            r'A\s*Zone.*?([\d,\.]+)',
 
-        b_zone = extract_value(
+        ]
+
+        for pattern in a_patterns:
+
+            match = re.search(
+                pattern,
+                text,
+                re.IGNORECASE | re.DOTALL
+            )
+
+            if match:
+
+                a_zone = match.group(1)
+
+                break
+
+        # B ZONE
+
+        b_patterns = [
+
             r'B\s*Zone\s*([\d,\.]+)',
-            text
-        )
+            r'B\s*\n\s*Zone\s*\n\s*([\d,\.]+)',
+            r'B\s*Zone.*?([\d,\.]+)',
 
-        c_zone = extract_value(
+        ]
+
+        for pattern in b_patterns:
+
+            match = re.search(
+                pattern,
+                text,
+                re.IGNORECASE | re.DOTALL
+            )
+
+            if match:
+
+                b_zone = match.group(1)
+
+                break
+
+        # C ZONE
+
+        c_patterns = [
+
             r'C\s*Zone\s*([\d,\.]+)',
-            text
-        )
+            r'C\s*\n\s*Zone\s*\n\s*([\d,\.]+)',
+            r'C\s*Zone.*?([\d,\.]+)',
 
-        d_zone = extract_value(
+        ]
+
+        for pattern in c_patterns:
+
+            match = re.search(
+                pattern,
+                text,
+                re.IGNORECASE | re.DOTALL
+            )
+
+            if match:
+
+                c_zone = match.group(1)
+
+                break
+
+        # D ZONE
+
+        d_patterns = [
+
             r'D\s*Zone\s*([\d,\.]+)',
-            text
-        )
+            r'D\s*\n\s*Zone\s*\n\s*([\d,\.]+)',
+            r'D\s*Zone.*?([\d,\.]+)',
+
+        ]
+
+        for pattern in d_patterns:
+
+            match = re.search(
+                pattern,
+                text,
+                re.IGNORECASE | re.DOTALL
+            )
+
+            if match:
+
+                d_zone = match.group(1)
+
+                break
 
         # ---------------------------------------------------
         # DISPLAY DATA
