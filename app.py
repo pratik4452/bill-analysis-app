@@ -54,7 +54,11 @@ uploaded_file = st.file_uploader(
 
 def extract_value(pattern, text):
 
-    match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+    match = re.search(
+        pattern,
+        text,
+        re.IGNORECASE | re.DOTALL
+    )
 
     if match:
         return match.group(1)
@@ -62,13 +66,19 @@ def extract_value(pattern, text):
     return ""
 
 # ---------------------------------------------------
-# CLEAN NUMBER FUNCTION
+# CLEAN NUMBER
 # ---------------------------------------------------
 
 def clean_number(value):
 
     if value:
-        return value.replace(",", "").replace("%", "").strip()
+
+        return (
+            value
+            .replace(",", "")
+            .replace("%", "")
+            .strip()
+        )
 
     return ""
 
@@ -93,19 +103,19 @@ if uploaded_file:
                 extracted = page.extract_text()
 
                 if extracted:
-                    text += extracted
+                    text += extracted + "\n"
 
         st.success("✅ PDF Processed Successfully")
 
         # ---------------------------------------------------
-        # DEBUG PDF TEXT (OPTIONAL)
-        # Uncomment below line if extraction fails
+        # DEBUG TEXT
+        # Uncomment if needed
         # ---------------------------------------------------
 
         # st.text(text)
 
         # ---------------------------------------------------
-        # EXTRACT VALUES FROM BILL
+        # EXTRACT VALUES
         # ---------------------------------------------------
 
         contract_demand = extract_value(
@@ -132,10 +142,33 @@ if uploaded_file:
         # CURRENT MONTH GENERATION
         # ---------------------------------------------------
 
-        solar_generation = extract_value(
-            r'Current\s+Month\s+Generation.*?([\d,]+)',
-            text
-        )
+        solar_generation = ""
+
+        generation_patterns = [
+
+            r'Current\s+Month\s+Generation\s*:?[\s\n]*([\d,]+)',
+
+            r'Generation\s*:?[\s\n]*([\d,]+)',
+
+            r'Solar\s+Generation\s*:?[\s\n]*([\d,]+)',
+
+            r'([\d,]+)\s*kWh'
+
+        ]
+
+        for pattern in generation_patterns:
+
+            match = re.search(
+                pattern,
+                text,
+                re.IGNORECASE | re.DOTALL
+            )
+
+            if match:
+
+                solar_generation = match.group(1)
+
+                break
 
         # ---------------------------------------------------
         # STATIC VALUES
@@ -150,7 +183,7 @@ if uploaded_file:
         electricity_duty = "7.50%"
 
         # ---------------------------------------------------
-        # DISPLAY EXTRACTED DATA
+        # DISPLAY DATA
         # ---------------------------------------------------
 
         st.markdown("## 📋 Extracted Bill Data")
@@ -207,14 +240,19 @@ if uploaded_file:
                 # ---------------------------------------------------
 
                 ws["C2"] = solar_capacity
+
                 ws["C3"] = plant_load
+
                 ws["C9"] = transmission_charge_input
 
                 # ---------------------------------------------------
                 # BILL VALUES
                 # ---------------------------------------------------
 
-                ws["C14"] = float(clean_number(contract_demand)) if contract_demand else 0
+                ws["C14"] = (
+                    float(clean_number(contract_demand))
+                    if contract_demand else 0
+                )
 
                 ws["C15"] = energy_rate
 
@@ -228,7 +266,10 @@ if uploaded_file:
 
                 ws["C20"] = power_factor
 
-                ws["C21"] = float(clean_number(max_demand)) if max_demand else 0
+                ws["C21"] = (
+                    float(clean_number(max_demand))
+                    if max_demand else 0
+                )
 
                 ws["C22"] = electricity_duty
 
@@ -236,15 +277,24 @@ if uploaded_file:
                 # CURRENT MONTH GENERATION
                 # ---------------------------------------------------
 
-                ws["H25"] = float(clean_number(solar_generation)) if solar_generation else 0
+                ws["H25"] = (
+                    float(clean_number(solar_generation))
+                    if solar_generation else 0
+                )
 
                 # ---------------------------------------------------
                 # OTHER BILL VALUES
                 # ---------------------------------------------------
 
-                ws["C30"] = float(clean_number(billed_demand)) if billed_demand else 0
+                ws["C30"] = (
+                    float(clean_number(billed_demand))
+                    if billed_demand else 0
+                )
 
-                ws["C40"] = float(clean_number(reference_units)) if reference_units else 0
+                ws["C40"] = (
+                    float(clean_number(reference_units))
+                    if reference_units else 0
+                )
 
                 # ---------------------------------------------------
                 # SAVE OUTPUT
@@ -256,7 +306,9 @@ if uploaded_file:
 
                 output.seek(0)
 
-                st.success("✅ Before vs After Solar Report Generated Successfully")
+                st.success(
+                    "✅ Before vs After Solar Report Generated Successfully"
+                )
 
                 # ---------------------------------------------------
                 # DOWNLOAD BUTTON
@@ -271,8 +323,12 @@ if uploaded_file:
 
             except Exception as excel_error:
 
-                st.error(f"Excel Generation Error: {excel_error}")
+                st.error(
+                    f"Excel Generation Error: {excel_error}"
+                )
 
     except Exception as e:
 
-        st.error(f"PDF Processing Error: {e}")
+        st.error(
+            f"PDF Processing Error: {e}"
+        )
