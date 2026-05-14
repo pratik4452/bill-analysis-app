@@ -34,6 +34,16 @@ plant_load = st.number_input(
 )
 
 # ---------------------------------------------------
+# MANUAL CURRENT MONTH GENERATION
+# ---------------------------------------------------
+
+current_month_generation = st.number_input(
+    "Enter Current Month Generation (kWh)",
+    min_value=0.0,
+    value=237415.0
+)
+
+# ---------------------------------------------------
 # FILE UPLOAD
 # ---------------------------------------------------
 
@@ -104,7 +114,7 @@ if uploaded_file:
 
         # ---------------------------------------------------
         # DEBUG PDF TEXT
-        # Uncomment if extraction fails
+        # Uncomment if needed
         # ---------------------------------------------------
 
         # st.text(text)
@@ -134,31 +144,13 @@ if uploaded_file:
         )
 
         # ---------------------------------------------------
-        # TRANSMISSION CHARGES
+        # TRANSMISSION CHARGES FROM PDF
         # ---------------------------------------------------
 
         transmission_charges = extract_value(
             r'Transmission Charges\s*:?[\s\n₹]*([\d,\.]+)',
             text
         )
-
-        # ---------------------------------------------------
-        # CURRENT MONTH GENERATION
-        # ---------------------------------------------------
-
-        current_month_generation = extract_value(
-            r'Units\s+Offset\s+Against\s+Drawal.*?Current\s+Month\s+Generation\s+([\d,]+)',
-            text
-        )
-
-        # Backup Pattern
-
-        if not current_month_generation:
-
-            current_month_generation = extract_value(
-                r'Current\s+Month\s+Generation\s+([\d,]+)',
-                text
-            )
 
         # ---------------------------------------------------
         # STATIC VALUES
@@ -235,7 +227,7 @@ if uploaded_file:
                 ws["C3"] = plant_load
 
                 # ---------------------------------------------------
-                # TRANSMISSION CHARGES
+                # TRANSMISSION CHARGES FROM BILL
                 # ---------------------------------------------------
 
                 ws["C9"] = (
@@ -275,10 +267,7 @@ if uploaded_file:
                 # CURRENT MONTH GENERATION
                 # ---------------------------------------------------
 
-                ws["H25"] = (
-                    float(clean_number(current_month_generation))
-                    if current_month_generation else 0
-                )
+                ws["H25"] = current_month_generation
 
                 # ---------------------------------------------------
                 # OTHER BILL VALUES
