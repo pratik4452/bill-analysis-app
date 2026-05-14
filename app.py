@@ -25,16 +25,6 @@ solar_capacity = 1000
 plant_load = 1800
 
 # ---------------------------------------------------
-# MANUAL CURRENT MONTH GENERATION
-# ---------------------------------------------------
-
-current_month_generation = st.number_input(
-    "Enter Current Month Generation (kWh)",
-    min_value=0.0,
-    value=237415.0
-)
-
-# ---------------------------------------------------
 # FILE UPLOAD
 # ---------------------------------------------------
 
@@ -105,7 +95,7 @@ if uploaded_file:
 
         # ---------------------------------------------------
         # DEBUG PDF TEXT
-        # Uncomment below to inspect PDF text
+        # Uncomment if needed
         # ---------------------------------------------------
 
         # st.text(text)
@@ -115,20 +105,14 @@ if uploaded_file:
         # ---------------------------------------------------
 
         contract_demand = extract_value(
-            r'Total Contract Demand\s*\(KVA\)\s*([\d,\.]+)',
+            r'Total\s*Contract\s*Demand\s*\(KVA\)\s*([\d,\.]+)',
             text
         )
-
-        # ---------------------------------------------------
-        # HIGHEST RECORDED MSEDCL DEMAND
-        # ---------------------------------------------------
 
         highest_recorded_msedcl_demand = extract_value(
             r'Highest\s*Recorded\s*MSEDCL\s*Demand\s*([\d,\.]+)',
             text
         )
-
-        # Backup pattern
 
         if not highest_recorded_msedcl_demand:
 
@@ -147,12 +131,64 @@ if uploaded_file:
             text
         )
 
-        # ---------------------------------------------------
-        # TRANSMISSION CHARGES
-        # ---------------------------------------------------
-
         transmission_charges = extract_value(
             r'Transmission\s*Charges\s*:?\s*₹?\s*([\d,\.]+)',
+            text
+        )
+
+        # ---------------------------------------------------
+        # CURRENT MONTH GENERATION
+        # ---------------------------------------------------
+
+        current_month_generation = ""
+
+        generation_patterns = [
+
+            r'Units\s*Offset\s*Against\s*Drawal.*?Current\s*Month\s*Generation\s*([\d,]+)',
+
+            r'Current\s*Month\s*Generation\s*([\d,]+)',
+
+            r'Current\s*Month\s*\n\s*Generation\s*\n\s*([\d,]+)',
+
+            r'Generation\s*\n\s*([\d,]+)',
+
+        ]
+
+        for pattern in generation_patterns:
+
+            match = re.search(
+                pattern,
+                text,
+                re.IGNORECASE | re.DOTALL
+            )
+
+            if match:
+
+                current_month_generation = match.group(1)
+
+                break
+
+        # ---------------------------------------------------
+        # TOD ZONE VALUES
+        # ---------------------------------------------------
+
+        a_zone = extract_value(
+            r'A\s*Zone\s*([\d,\.]+)',
+            text
+        )
+
+        b_zone = extract_value(
+            r'B\s*Zone\s*([\d,\.]+)',
+            text
+        )
+
+        c_zone = extract_value(
+            r'C\s*Zone\s*([\d,\.]+)',
+            text
+        )
+
+        d_zone = extract_value(
+            r'D\s*Zone\s*([\d,\.]+)',
             text
         )
 
@@ -178,12 +214,17 @@ if uploaded_file:
                 transmission_charges
             )
 
-        with col2:
-
             st.write(
-                "Current Month Generation:",
+                "Solar Units at Consumption End:",
                 current_month_generation
             )
+
+        with col2:
+
+            st.write("A Zone:", a_zone)
+            st.write("B Zone:", b_zone)
+            st.write("C Zone:", c_zone)
+            st.write("D Zone:", d_zone)
 
             st.write("Billed Demand:", billed_demand)
 
@@ -221,10 +262,6 @@ if uploaded_file:
                 )
 
                 wb = load_workbook(template_path)
-
-                # ---------------------------------------------------
-                # SELECT FIRST SHEET
-                # ---------------------------------------------------
 
                 ws = wb[wb.sheetnames[0]]
 
@@ -265,11 +302,6 @@ if uploaded_file:
 
                 ws["C20"] = power_factor
 
-                # ---------------------------------------------------
-                # C21 = MAXIMUM DEMAND (kVA)
-                # FROM HIGHEST RECORDED MSEDCL DEMAND
-                # ---------------------------------------------------
-
                 ws["C21"] = (
                     float(clean_number(
                         highest_recorded_msedcl_demand
@@ -280,10 +312,39 @@ if uploaded_file:
                 ws["C22"] = electricity_duty
 
                 # ---------------------------------------------------
-                # CURRENT MONTH GENERATION
+                # SOLAR UNITS AT CONSUMPTION END
                 # ---------------------------------------------------
 
-                ws["H25"] = current_month_generation
+                ws["H25"] = (
+                    float(clean_number(
+                        current_month_generation
+                    ))
+                    if current_month_generation else 0
+                )
+
+                # ---------------------------------------------------
+                # TOD ZONES
+                # ---------------------------------------------------
+
+                ws["K26"] = (
+                    float(clean_number(a_zone))
+                    if a_zone else 0
+                )
+
+                ws["L26"] = (
+                    float(clean_number(b_zone))
+                    if b_zone else 0
+                )
+
+                ws["M26"] = (
+                    float(clean_number(c_zone))
+                    if c_zone else 0
+                )
+
+                ws["N26"] = (
+                    float(clean_number(d_zone))
+                    if d_zone else 0
+                )
 
                 # ---------------------------------------------------
                 # OTHER BILL VALUES
