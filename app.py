@@ -33,12 +33,6 @@ plant_load = st.number_input(
     value=1800.0
 )
 
-transmission_charge_input = st.number_input(
-    "Enter Transmission Charges",
-    min_value=0.0,
-    value=0.0
-)
-
 # ---------------------------------------------------
 # MANUAL CURRENT MONTH GENERATION
 # ---------------------------------------------------
@@ -76,7 +70,7 @@ def extract_value(pattern, text):
     return ""
 
 # ---------------------------------------------------
-# CLEAN NUMBER
+# CLEAN NUMBER FUNCTION
 # ---------------------------------------------------
 
 def clean_number(value):
@@ -87,6 +81,7 @@ def clean_number(value):
             value
             .replace(",", "")
             .replace("%", "")
+            .replace("₹", "")
             .strip()
         )
 
@@ -118,7 +113,14 @@ if uploaded_file:
         st.success("✅ PDF Processed Successfully")
 
         # ---------------------------------------------------
-        # EXTRACT VALUES
+        # DEBUG PDF TEXT
+        # Uncomment if needed
+        # ---------------------------------------------------
+
+        # st.text(text)
+
+        # ---------------------------------------------------
+        # EXTRACT VALUES FROM BILL
         # ---------------------------------------------------
 
         contract_demand = extract_value(
@@ -138,6 +140,15 @@ if uploaded_file:
 
         reference_units = extract_value(
             r'Ref consumption\s*:?\s*([\d,]+)',
+            text
+        )
+
+        # ---------------------------------------------------
+        # TRANSMISSION CHARGES FROM PDF
+        # ---------------------------------------------------
+
+        transmission_charges = extract_value(
+            r'Transmission Charges\s*:?[\s\n₹]*([\d,\.]+)',
             text
         )
 
@@ -175,6 +186,7 @@ if uploaded_file:
             st.write("Power Factor:", power_factor)
             st.write("Maximum Demand:", max_demand)
             st.write("Electricity Duty:", electricity_duty)
+            st.write("Transmission Charges:", transmission_charges)
             st.write("Current Month Generation:", current_month_generation)
             st.write("Billed Demand:", billed_demand)
             st.write("Reference Units:", reference_units)
@@ -214,7 +226,14 @@ if uploaded_file:
 
                 ws["C3"] = plant_load
 
-                ws["C9"] = transmission_charge_input
+                # ---------------------------------------------------
+                # TRANSMISSION CHARGES FROM BILL
+                # ---------------------------------------------------
+
+                ws["C9"] = (
+                    float(clean_number(transmission_charges))
+                    if transmission_charges else 0
+                )
 
                 # ---------------------------------------------------
                 # BILL VALUES
@@ -245,7 +264,7 @@ if uploaded_file:
                 ws["C22"] = electricity_duty
 
                 # ---------------------------------------------------
-                # MANUAL CURRENT MONTH GENERATION
+                # CURRENT MONTH GENERATION
                 # ---------------------------------------------------
 
                 ws["H25"] = current_month_generation
