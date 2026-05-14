@@ -98,7 +98,7 @@ if uploaded_file:
         st.success("✅ PDF Processed Successfully")
 
         # ---------------------------------------------------
-        # EXTRACT DATA
+        # EXTRACT DATA FROM PDF
         # ---------------------------------------------------
 
         contract_demand = extract_value(
@@ -116,18 +116,22 @@ if uploaded_file:
             text
         )
 
-        solar_generation = extract_value(
-            r'01\-APR\-2026 TO 30\-APR\-2026\s+([\d,]+)',
-            text
-        )
-
         reference_units = extract_value(
             r'Ref consumption :\s+(\d+)',
             text
         )
 
         # ---------------------------------------------------
-        # FIXED STATIC VALUES
+        # CURRENT MONTH GENERATION
+        # ---------------------------------------------------
+
+        solar_generation = extract_value(
+            r'Current Month Generation\s+([\d,]+)',
+            text
+        )
+
+        # ---------------------------------------------------
+        # STATIC VALUES
         # ---------------------------------------------------
 
         energy_rate = 8.44
@@ -139,7 +143,7 @@ if uploaded_file:
         electricity_duty = "7.50%"
 
         # ---------------------------------------------------
-        # DISPLAY DATA
+        # DISPLAY EXTRACTED DATA
         # ---------------------------------------------------
 
         st.markdown("## 📋 Extracted Bill Data")
@@ -153,19 +157,23 @@ if uploaded_file:
         st.write("Power Factor:", power_factor)
         st.write("Maximum Demand:", max_demand)
         st.write("Electricity Duty:", electricity_duty)
-        st.write("Solar Generation:", solar_generation)
+        st.write("Current Month Generation:", solar_generation)
         st.write("Billed Demand:", billed_demand)
         st.write("Reference Units:", reference_units)
 
         st.markdown("---")
 
         # ---------------------------------------------------
-        # GENERATE EXCEL
+        # GENERATE EXCEL REPORT
         # ---------------------------------------------------
 
         if st.button("Generate Excel Report"):
 
             try:
+
+                # ---------------------------------------------------
+                # LOAD TEMPLATE
+                # ---------------------------------------------------
 
                 template_path = os.path.join(
                     "templates",
@@ -174,6 +182,10 @@ if uploaded_file:
 
                 wb = load_workbook(template_path)
 
+                # ---------------------------------------------------
+                # AUTO SELECT FIRST SHEET
+                # ---------------------------------------------------
+
                 ws = wb[wb.sheetnames[0]]
 
                 # ---------------------------------------------------
@@ -181,11 +193,13 @@ if uploaded_file:
                 # ---------------------------------------------------
 
                 ws["C2"] = solar_capacity
+
                 ws["C3"] = plant_load
+
                 ws["C9"] = transmission_charge_input
 
                 # ---------------------------------------------------
-                # BILL DATA
+                # BILL DATA INPUTS
                 # ---------------------------------------------------
 
                 ws["C14"] = float(clean_number(contract_demand)) if contract_demand else 0
@@ -206,7 +220,15 @@ if uploaded_file:
 
                 ws["C22"] = electricity_duty
 
+                # ---------------------------------------------------
+                # CURRENT MONTH GENERATION
+                # ---------------------------------------------------
+
                 ws["H25"] = float(clean_number(solar_generation)) if solar_generation else 0
+
+                # ---------------------------------------------------
+                # OTHER VALUES
+                # ---------------------------------------------------
 
                 ws["C30"] = float(clean_number(billed_demand)) if billed_demand else 0
 
@@ -222,7 +244,7 @@ if uploaded_file:
 
                 output.seek(0)
 
-                st.success("✅ Report Generated Successfully")
+                st.success("✅ Before vs After Solar Report Generated Successfully")
 
                 # ---------------------------------------------------
                 # DOWNLOAD BUTTON
