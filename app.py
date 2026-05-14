@@ -104,7 +104,7 @@ if uploaded_file:
 
         # ---------------------------------------------------
         # DEBUG PDF TEXT
-        # Uncomment below if extraction fails
+        # Uncomment if extraction fails
         # ---------------------------------------------------
 
         # st.text(text)
@@ -146,35 +146,19 @@ if uploaded_file:
         # CURRENT MONTH GENERATION
         # ---------------------------------------------------
 
-        current_month_generation = ""
+        current_month_generation = extract_value(
+            r'Units\s+Offset\s+Against\s+Drawal.*?Current\s+Month\s+Generation\s+([\d,]+)',
+            text
+        )
 
-        generation_patterns = [
+        # Backup Pattern
 
-            r'Current\s+Month\s+Generation\s*:?[\s\n]*([\d,]+)',
+        if not current_month_generation:
 
-            r'Current\s+Month.*?Generation.*?([\d,]+)',
-
-            r'Solar\s+Generation\s*:?[\s\n]*([\d,]+)',
-
-            r'Generation\s*:?[\s\n]*([\d,]+)',
-
-            r'([\d,]+)\s*kWh'
-
-        ]
-
-        for pattern in generation_patterns:
-
-            match = re.search(
-                pattern,
-                text,
-                re.IGNORECASE | re.DOTALL
+            current_month_generation = extract_value(
+                r'Current\s+Month\s+Generation\s+([\d,]+)',
+                text
             )
-
-            if match:
-
-                current_month_generation = match.group(1)
-
-                break
 
         # ---------------------------------------------------
         # STATIC VALUES
