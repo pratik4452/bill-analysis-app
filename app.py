@@ -40,6 +40,16 @@ transmission_charge_input = st.number_input(
 )
 
 # ---------------------------------------------------
+# MANUAL CURRENT MONTH GENERATION
+# ---------------------------------------------------
+
+current_month_generation = st.number_input(
+    "Enter Current Month Generation (kWh)",
+    min_value=0.0,
+    value=237415.0
+)
+
+# ---------------------------------------------------
 # FILE UPLOAD
 # ---------------------------------------------------
 
@@ -108,13 +118,6 @@ if uploaded_file:
         st.success("✅ PDF Processed Successfully")
 
         # ---------------------------------------------------
-        # DEBUG TEXT
-        # Uncomment if needed
-        # ---------------------------------------------------
-
-        # st.text(text)
-
-        # ---------------------------------------------------
         # EXTRACT VALUES
         # ---------------------------------------------------
 
@@ -137,38 +140,6 @@ if uploaded_file:
             r'Ref consumption\s*:?\s*([\d,]+)',
             text
         )
-
-        # ---------------------------------------------------
-        # CURRENT MONTH GENERATION
-        # ---------------------------------------------------
-
-        solar_generation = ""
-
-        generation_patterns = [
-
-            r'Current\s+Month\s+Generation\s*:?[\s\n]*([\d,]+)',
-
-            r'Generation\s*:?[\s\n]*([\d,]+)',
-
-            r'Solar\s+Generation\s*:?[\s\n]*([\d,]+)',
-
-            r'([\d,]+)\s*kWh'
-
-        ]
-
-        for pattern in generation_patterns:
-
-            match = re.search(
-                pattern,
-                text,
-                re.IGNORECASE | re.DOTALL
-            )
-
-            if match:
-
-                solar_generation = match.group(1)
-
-                break
 
         # ---------------------------------------------------
         # STATIC VALUES
@@ -204,7 +175,7 @@ if uploaded_file:
             st.write("Power Factor:", power_factor)
             st.write("Maximum Demand:", max_demand)
             st.write("Electricity Duty:", electricity_duty)
-            st.write("Current Month Generation:", solar_generation)
+            st.write("Current Month Generation:", current_month_generation)
             st.write("Billed Demand:", billed_demand)
             st.write("Reference Units:", reference_units)
 
@@ -274,13 +245,10 @@ if uploaded_file:
                 ws["C22"] = electricity_duty
 
                 # ---------------------------------------------------
-                # CURRENT MONTH GENERATION
+                # MANUAL CURRENT MONTH GENERATION
                 # ---------------------------------------------------
 
-                ws["H25"] = (
-                    float(clean_number(solar_generation))
-                    if solar_generation else 0
-                )
+                ws["H25"] = current_month_generation
 
                 # ---------------------------------------------------
                 # OTHER BILL VALUES
