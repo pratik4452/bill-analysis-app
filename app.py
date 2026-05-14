@@ -120,7 +120,7 @@ if uploaded_file:
             text
         )
 
-        max_demand = extract_value(
+        highest_recorded_msedcl_demand = extract_value(
             r'Highest Recorded\s+MSEDCL Demand\s+([\d,]+)',
             text
         )
@@ -156,12 +156,20 @@ if uploaded_file:
 
             st.write("Contract Demand:", contract_demand)
             st.write("Transmission Charges:", transmission_charges)
-            st.write("Maximum Demand:", max_demand)
+            st.write(
+                "Highest Recorded MSEDCL Demand:",
+                highest_recorded_msedcl_demand
+            )
 
         with col2:
 
-            st.write("Current Month Generation:", current_month_generation)
+            st.write(
+                "Current Month Generation:",
+                current_month_generation
+            )
+
             st.write("Billed Demand:", billed_demand)
+
             st.write("Reference Units:", reference_units)
 
         st.markdown("---")
@@ -242,8 +250,10 @@ if uploaded_file:
                 ws["C20"] = power_factor
 
                 ws["C21"] = (
-                    float(clean_number(max_demand))
-                    if max_demand else 0
+                    float(clean_number(
+                        highest_recorded_msedcl_demand
+                    ))
+                    if highest_recorded_msedcl_demand else 0
                 )
 
                 ws["C22"] = electricity_duty
