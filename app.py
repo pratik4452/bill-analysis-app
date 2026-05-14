@@ -54,7 +54,7 @@ uploaded_file = st.file_uploader(
 
 def extract_value(pattern, text):
 
-    match = re.search(pattern, text, re.DOTALL)
+    match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
 
     if match:
         return match.group(1)
@@ -62,7 +62,7 @@ def extract_value(pattern, text):
     return ""
 
 # ---------------------------------------------------
-# CLEAN NUMBER
+# CLEAN NUMBER FUNCTION
 # ---------------------------------------------------
 
 def clean_number(value):
@@ -98,7 +98,14 @@ if uploaded_file:
         st.success("✅ PDF Processed Successfully")
 
         # ---------------------------------------------------
-        # EXTRACT DATA FROM PDF
+        # DEBUG PDF TEXT (OPTIONAL)
+        # Uncomment below line if extraction fails
+        # ---------------------------------------------------
+
+        # st.text(text)
+
+        # ---------------------------------------------------
+        # EXTRACT VALUES FROM BILL
         # ---------------------------------------------------
 
         contract_demand = extract_value(
@@ -107,7 +114,7 @@ if uploaded_file:
         )
 
         max_demand = extract_value(
-            r'Highest Recorded\s+MSEDCL Demand\s+(\d+)',
+            r'Highest Recorded\s+MSEDCL Demand\s+([\d,]+)',
             text
         )
 
@@ -117,7 +124,7 @@ if uploaded_file:
         )
 
         reference_units = extract_value(
-            r'Ref consumption :\s+(\d+)',
+            r'Ref consumption\s*:?\s*([\d,]+)',
             text
         )
 
@@ -126,7 +133,7 @@ if uploaded_file:
         # ---------------------------------------------------
 
         solar_generation = extract_value(
-            r'Current Month Generation\s+([\d,]+)',
+            r'Current\s+Month\s+Generation.*?([\d,]+)',
             text
         )
 
@@ -148,18 +155,25 @@ if uploaded_file:
 
         st.markdown("## 📋 Extracted Bill Data")
 
-        st.write("Contract Demand:", contract_demand)
-        st.write("Energy Charges Rate:", energy_rate)
-        st.write("Demand Charges Rate:", demand_charge_rate)
-        st.write("Wheeling Charges Rate:", wheeling_charge_rate)
-        st.write("FAC Rate:", fac_rate)
-        st.write("Tax on Sales:", tax_rate)
-        st.write("Power Factor:", power_factor)
-        st.write("Maximum Demand:", max_demand)
-        st.write("Electricity Duty:", electricity_duty)
-        st.write("Current Month Generation:", solar_generation)
-        st.write("Billed Demand:", billed_demand)
-        st.write("Reference Units:", reference_units)
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            st.write("Contract Demand:", contract_demand)
+            st.write("Energy Charges Rate:", energy_rate)
+            st.write("Demand Charges Rate:", demand_charge_rate)
+            st.write("Wheeling Charges Rate:", wheeling_charge_rate)
+            st.write("FAC Rate:", fac_rate)
+            st.write("Tax on Sales:", tax_rate)
+
+        with col2:
+
+            st.write("Power Factor:", power_factor)
+            st.write("Maximum Demand:", max_demand)
+            st.write("Electricity Duty:", electricity_duty)
+            st.write("Current Month Generation:", solar_generation)
+            st.write("Billed Demand:", billed_demand)
+            st.write("Reference Units:", reference_units)
 
         st.markdown("---")
 
@@ -193,13 +207,11 @@ if uploaded_file:
                 # ---------------------------------------------------
 
                 ws["C2"] = solar_capacity
-
                 ws["C3"] = plant_load
-
                 ws["C9"] = transmission_charge_input
 
                 # ---------------------------------------------------
-                # BILL DATA INPUTS
+                # BILL VALUES
                 # ---------------------------------------------------
 
                 ws["C14"] = float(clean_number(contract_demand)) if contract_demand else 0
@@ -227,7 +239,7 @@ if uploaded_file:
                 ws["H25"] = float(clean_number(solar_generation)) if solar_generation else 0
 
                 # ---------------------------------------------------
-                # OTHER VALUES
+                # OTHER BILL VALUES
                 # ---------------------------------------------------
 
                 ws["C30"] = float(clean_number(billed_demand)) if billed_demand else 0
