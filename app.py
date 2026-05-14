@@ -25,16 +25,6 @@ solar_capacity = 1000
 plant_load = 1800
 
 # ---------------------------------------------------
-# MANUAL CURRENT MONTH GENERATION
-# ---------------------------------------------------
-
-current_month_generation = st.number_input(
-    "Enter Current Month Generation (kWh)",
-    min_value=0.0,
-    value=237415.0
-)
-
-# ---------------------------------------------------
 # FILE UPLOAD
 # ---------------------------------------------------
 
@@ -105,7 +95,7 @@ if uploaded_file:
 
         # ---------------------------------------------------
         # DEBUG PDF TEXT
-        # Uncomment below to inspect PDF text
+        # Uncomment below to inspect extracted text
         # ---------------------------------------------------
 
         # st.text(text)
@@ -119,16 +109,12 @@ if uploaded_file:
             text
         )
 
-        # ---------------------------------------------------
-        # HIGHEST RECORDED MSEDCL DEMAND
-        # ---------------------------------------------------
-
         highest_recorded_msedcl_demand = extract_value(
             r'Highest\s*Recorded\s*MSEDCL\s*Demand\s*([\d,\.]+)',
             text
         )
 
-        # Backup pattern
+        # Backup Pattern
 
         if not highest_recorded_msedcl_demand:
 
@@ -147,14 +133,29 @@ if uploaded_file:
             text
         )
 
-        # ---------------------------------------------------
-        # TRANSMISSION CHARGES
-        # ---------------------------------------------------
-
         transmission_charges = extract_value(
             r'Transmission\s*Charges\s*:?\s*₹?\s*([\d,\.]+)',
             text
         )
+
+        # ---------------------------------------------------
+        # CURRENT MONTH GENERATION
+        # FETCH FOR H25
+        # ---------------------------------------------------
+
+        current_month_generation = extract_value(
+            r'Units\s*Offset\s*Against\s*Drawal.*?Current\s*Month\s*Generation\s*([\d,\.]+)',
+            text
+        )
+
+        # Backup Pattern
+
+        if not current_month_generation:
+
+            current_month_generation = extract_value(
+                r'Current\s*Month\s*Generation\s*([\d,\.]+)',
+                text
+            )
 
         # ---------------------------------------------------
         # DISPLAY DATA
@@ -181,7 +182,7 @@ if uploaded_file:
         with col2:
 
             st.write(
-                "Current Month Generation:",
+                "Solar Units at Consumption End:",
                 current_month_generation
             )
 
@@ -266,8 +267,7 @@ if uploaded_file:
                 ws["C20"] = power_factor
 
                 # ---------------------------------------------------
-                # C21 = MAXIMUM DEMAND (kVA)
-                # FROM HIGHEST RECORDED MSEDCL DEMAND
+                # MAXIMUM DEMAND
                 # ---------------------------------------------------
 
                 ws["C21"] = (
@@ -280,10 +280,15 @@ if uploaded_file:
                 ws["C22"] = electricity_duty
 
                 # ---------------------------------------------------
-                # CURRENT MONTH GENERATION
+                # H25 = SOLAR UNITS AT CONSUMPTION END
                 # ---------------------------------------------------
 
-                ws["H25"] = current_month_generation
+                ws["H25"] = (
+                    float(clean_number(
+                        current_month_generation
+                    ))
+                    if current_month_generation else 0
+                )
 
                 # ---------------------------------------------------
                 # OTHER BILL VALUES
