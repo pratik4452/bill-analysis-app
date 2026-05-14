@@ -22,7 +22,6 @@ st.subheader("Before Solar vs After Solar Analysis")
 # ---------------------------------------------------
 
 solar_capacity = 1000
-
 plant_load = 1800
 
 # ---------------------------------------------------
@@ -106,7 +105,7 @@ if uploaded_file:
 
         # ---------------------------------------------------
         # DEBUG PDF TEXT
-        # Uncomment if needed
+        # Uncomment below to inspect PDF text
         # ---------------------------------------------------
 
         # st.text(text)
@@ -116,31 +115,44 @@ if uploaded_file:
         # ---------------------------------------------------
 
         contract_demand = extract_value(
-            r'Total Contract Demand \(KVA\)\s+([\d,]+)',
+            r'Total Contract Demand\s*\(KVA\)\s*([\d,\.]+)',
             text
         )
+
+        # ---------------------------------------------------
+        # HIGHEST RECORDED MSEDCL DEMAND
+        # ---------------------------------------------------
 
         highest_recorded_msedcl_demand = extract_value(
-            r'Highest Recorded\s+MSEDCL Demand\s+([\d,]+)',
+            r'Highest\s*Recorded\s*MSEDCL\s*Demand\s*([\d,\.]+)',
             text
         )
 
+        # Backup pattern
+
+        if not highest_recorded_msedcl_demand:
+
+            highest_recorded_msedcl_demand = extract_value(
+                r'MSEDCL\s*Demand\s*([\d,\.]+)',
+                text
+            )
+
         billed_demand = extract_value(
-            r'Billed Demand\s+([\d\.]+)',
+            r'Billed\s*Demand\s*([\d,\.]+)',
             text
         )
 
         reference_units = extract_value(
-            r'Ref consumption\s*:?\s*([\d,]+)',
+            r'Ref\s*consumption\s*:?\s*([\d,\.]+)',
             text
         )
 
         # ---------------------------------------------------
-        # TRANSMISSION CHARGES FROM PDF
+        # TRANSMISSION CHARGES
         # ---------------------------------------------------
 
         transmission_charges = extract_value(
-            r'Transmission Charges\s*:?[\s\n₹]*([\d,\.]+)',
+            r'Transmission\s*Charges\s*:?\s*₹?\s*([\d,\.]+)',
             text
         )
 
@@ -155,10 +167,15 @@ if uploaded_file:
         with col1:
 
             st.write("Contract Demand:", contract_demand)
-            st.write("Transmission Charges:", transmission_charges)
+
             st.write(
                 "Highest Recorded MSEDCL Demand:",
                 highest_recorded_msedcl_demand
+            )
+
+            st.write(
+                "Transmission Charges:",
+                transmission_charges
             )
 
         with col2:
@@ -206,7 +223,7 @@ if uploaded_file:
                 wb = load_workbook(template_path)
 
                 # ---------------------------------------------------
-                # AUTO SELECT FIRST SHEET
+                # SELECT FIRST SHEET
                 # ---------------------------------------------------
 
                 ws = wb[wb.sheetnames[0]]
@@ -216,7 +233,6 @@ if uploaded_file:
                 # ---------------------------------------------------
 
                 ws["C2"] = solar_capacity
-
                 ws["C3"] = plant_load
 
                 # ---------------------------------------------------
@@ -248,6 +264,11 @@ if uploaded_file:
                 ws["C19"] = tax_rate
 
                 ws["C20"] = power_factor
+
+                # ---------------------------------------------------
+                # C21 = MAXIMUM DEMAND (kVA)
+                # FROM HIGHEST RECORDED MSEDCL DEMAND
+                # ---------------------------------------------------
 
                 ws["C21"] = (
                     float(clean_number(
