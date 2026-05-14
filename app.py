@@ -5,9 +5,9 @@ import os
 from openpyxl import load_workbook
 from io import BytesIO
 
-# -------------------------------------------------
-# PAGE CONFIG
-# -------------------------------------------------
+# ---------------------------------------------------
+# PAGE CONFIGURATION
+# ---------------------------------------------------
 
 st.set_page_config(
     page_title="DISCOM Bill Analysis",
@@ -17,18 +17,18 @@ st.set_page_config(
 st.title("⚡ DISCOM Bill Analysis App")
 st.subheader("Before Solar vs After Solar Analysis")
 
-# -------------------------------------------------
+# ---------------------------------------------------
 # FILE UPLOAD
-# -------------------------------------------------
+# ---------------------------------------------------
 
 uploaded_file = st.file_uploader(
     "Upload Electricity Bill PDF",
     type=["pdf"]
 )
 
-# -------------------------------------------------
+# ---------------------------------------------------
 # HELPER FUNCTION
-# -------------------------------------------------
+# ---------------------------------------------------
 
 def extract_value(pattern, text):
 
@@ -39,9 +39,9 @@ def extract_value(pattern, text):
 
     return ""
 
-# -------------------------------------------------
-# MAIN LOGIC
-# -------------------------------------------------
+# ---------------------------------------------------
+# MAIN PROCESS
+# ---------------------------------------------------
 
 if uploaded_file:
 
@@ -49,9 +49,9 @@ if uploaded_file:
 
     try:
 
-        # -----------------------------------------
+        # ---------------------------------------------------
         # READ PDF
-        # -----------------------------------------
+        # ---------------------------------------------------
 
         with pdfplumber.open(uploaded_file) as pdf:
 
@@ -64,9 +64,9 @@ if uploaded_file:
 
         st.success("✅ PDF Processed Successfully")
 
-        # -----------------------------------------
-        # EXTRACT DATA
-        # -----------------------------------------
+        # ---------------------------------------------------
+        # EXTRACT DATA USING REGEX
+        # ---------------------------------------------------
 
         consumer_number = extract_value(
             r'Consumer Number\s+(\d+)',
@@ -93,9 +93,9 @@ if uploaded_file:
             text
         )
 
-        # -----------------------------------------
+        # ---------------------------------------------------
         # DISPLAY EXTRACTED DATA
-        # -----------------------------------------
+        # ---------------------------------------------------
 
         st.markdown("## 📋 Extracted Bill Details")
 
@@ -114,52 +114,56 @@ if uploaded_file:
 
         st.markdown("---")
 
-        # -----------------------------------------
-        # GENERATE EXCEL
-        # -----------------------------------------
+        # ---------------------------------------------------
+        # GENERATE EXCEL REPORT
+        # ---------------------------------------------------
 
         if st.button("Generate Excel Report"):
 
             try:
 
-                # TEMPLATE PATH
+                # ---------------------------------------------------
+                # LOAD TEMPLATE
+                # ---------------------------------------------------
+
                 template_path = os.path.join(
                     "templates",
                     "bill_template.xlsx"
                 )
 
-                # LOAD EXCEL
                 wb = load_workbook(template_path)
 
-                # SHOW SHEETS
-                st.write("Available Sheets:", wb.sheetnames)
+                # ---------------------------------------------------
+                # SELECT INPUT SHEET
+                # ---------------------------------------------------
 
-                # SELECT FIRST SHEET
-                ws = wb[wb.sheetnames[0]]
+                ws = wb["Apr 26_Supreme"]
 
-                # -------------------------------------------------
-                # IMPORTANT:
-                # USE ONLY NON-MERGED SAFE CELLS
-                # -------------------------------------------------
+                # ---------------------------------------------------
+                # SAFE CELLS (NON-MERGED)
+                # ---------------------------------------------------
+                # Temporary safe cells for testing
+                # Later map to actual yellow cells
+                # ---------------------------------------------------
 
-                ws["B2"] = "Consumer Number"
-                ws["C2"] = consumer_number
+                ws["Z1"] = "Consumer Number"
+                ws["AA1"] = consumer_number
 
-                ws["B3"] = "Bill Month"
-                ws["C3"] = bill_month
+                ws["Z2"] = "Bill Month"
+                ws["AA2"] = bill_month
 
-                ws["B4"] = "Payable Amount"
-                ws["C4"] = payable_amount
+                ws["Z3"] = "Payable Amount"
+                ws["AA3"] = payable_amount
 
-                ws["B5"] = "Billed Demand"
-                ws["C5"] = billed_demand
+                ws["Z4"] = "Billed Demand"
+                ws["AA4"] = billed_demand
 
-                ws["B6"] = "Total Drawal"
-                ws["C6"] = total_drawal
+                ws["Z5"] = "Total Drawal"
+                ws["AA5"] = total_drawal
 
-                # -----------------------------------------
+                # ---------------------------------------------------
                 # SAVE OUTPUT
-                # -----------------------------------------
+                # ---------------------------------------------------
 
                 output = BytesIO()
 
@@ -169,9 +173,9 @@ if uploaded_file:
 
                 st.success("✅ Excel Report Generated Successfully")
 
-                # -----------------------------------------
+                # ---------------------------------------------------
                 # DOWNLOAD BUTTON
-                # -----------------------------------------
+                # ---------------------------------------------------
 
                 st.download_button(
                     label="⬇ Download Excel Report",
