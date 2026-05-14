@@ -25,6 +25,48 @@ solar_capacity = 1000
 plant_load = 1800
 
 # ---------------------------------------------------
+# MANUAL INPUTS
+# ---------------------------------------------------
+
+st.markdown("## ⚡ Manual Inputs")
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    current_month_generation = st.number_input(
+        "Solar Generation (kWh)",
+        min_value=0.0,
+        value=0.0
+    )
+
+    a_zone = st.number_input(
+        "A Zone Units",
+        min_value=0.0,
+        value=0.0
+    )
+
+    b_zone = st.number_input(
+        "B Zone Units",
+        min_value=0.0,
+        value=0.0
+    )
+
+with col2:
+
+    c_zone = st.number_input(
+        "C Zone Units",
+        min_value=0.0,
+        value=0.0
+    )
+
+    d_zone = st.number_input(
+        "D Zone Units",
+        min_value=0.0,
+        value=0.0
+    )
+
+# ---------------------------------------------------
 # FILE UPLOAD
 # ---------------------------------------------------
 
@@ -94,13 +136,6 @@ if uploaded_file:
         st.success("✅ PDF Processed Successfully")
 
         # ---------------------------------------------------
-        # DEBUG PDF TEXT
-        # Uncomment below if needed
-        # ---------------------------------------------------
-
-        # st.text(text)
-
-        # ---------------------------------------------------
         # EXTRACT VALUES FROM BILL
         # ---------------------------------------------------
 
@@ -137,151 +172,14 @@ if uploaded_file:
         )
 
         # ---------------------------------------------------
-        # CURRENT MONTH GENERATION
-        # ---------------------------------------------------
-
-        current_month_generation = ""
-
-        generation_patterns = [
-
-            r'Units\s*Offset\s*Against\s*Drawal.*?Current\s*Month\s*Generation\s*([\d,]+)',
-
-            r'Current\s*Month\s*Generation\s*([\d,]+)',
-
-            r'Current\s*Month\s*\n\s*Generation\s*\n\s*([\d,]+)',
-
-            r'Generation\s*\n\s*([\d,]+)',
-
-        ]
-
-        for pattern in generation_patterns:
-
-            match = re.search(
-                pattern,
-                text,
-                re.IGNORECASE | re.DOTALL
-            )
-
-            if match:
-
-                current_month_generation = match.group(1)
-
-                break
-
-        # ---------------------------------------------------
-        # TOD ZONE VALUES
-        # ---------------------------------------------------
-
-        a_zone = ""
-        b_zone = ""
-        c_zone = ""
-        d_zone = ""
-
-        # A ZONE
-
-        a_patterns = [
-
-            r'A\s*Zone\s*([\d,\.]+)',
-            r'A\s*\n\s*Zone\s*\n\s*([\d,\.]+)',
-            r'A\s*Zone.*?([\d,\.]+)',
-
-        ]
-
-        for pattern in a_patterns:
-
-            match = re.search(
-                pattern,
-                text,
-                re.IGNORECASE | re.DOTALL
-            )
-
-            if match:
-
-                a_zone = match.group(1)
-
-                break
-
-        # B ZONE
-
-        b_patterns = [
-
-            r'B\s*Zone\s*([\d,\.]+)',
-            r'B\s*\n\s*Zone\s*\n\s*([\d,\.]+)',
-            r'B\s*Zone.*?([\d,\.]+)',
-
-        ]
-
-        for pattern in b_patterns:
-
-            match = re.search(
-                pattern,
-                text,
-                re.IGNORECASE | re.DOTALL
-            )
-
-            if match:
-
-                b_zone = match.group(1)
-
-                break
-
-        # C ZONE
-
-        c_patterns = [
-
-            r'C\s*Zone\s*([\d,\.]+)',
-            r'C\s*\n\s*Zone\s*\n\s*([\d,\.]+)',
-            r'C\s*Zone.*?([\d,\.]+)',
-
-        ]
-
-        for pattern in c_patterns:
-
-            match = re.search(
-                pattern,
-                text,
-                re.IGNORECASE | re.DOTALL
-            )
-
-            if match:
-
-                c_zone = match.group(1)
-
-                break
-
-        # D ZONE
-
-        d_patterns = [
-
-            r'D\s*Zone\s*([\d,\.]+)',
-            r'D\s*\n\s*Zone\s*\n\s*([\d,\.]+)',
-            r'D\s*Zone.*?([\d,\.]+)',
-
-        ]
-
-        for pattern in d_patterns:
-
-            match = re.search(
-                pattern,
-                text,
-                re.IGNORECASE | re.DOTALL
-            )
-
-            if match:
-
-                d_zone = match.group(1)
-
-                break
-
-        # ---------------------------------------------------
         # DISPLAY DATA
         # ---------------------------------------------------
 
         st.markdown("## 📋 Extracted Bill Data")
 
-        col1, col2 = st.columns(2)
+        col3, col4 = st.columns(2)
 
-        with col1:
+        with col3:
 
             st.write("Contract Demand:", contract_demand)
 
@@ -295,17 +193,7 @@ if uploaded_file:
                 transmission_charges
             )
 
-            st.write(
-                "Solar Units at Consumption End:",
-                current_month_generation
-            )
-
-        with col2:
-
-            st.write("A Zone:", a_zone)
-            st.write("B Zone:", b_zone)
-            st.write("C Zone:", c_zone)
-            st.write("D Zone:", d_zone)
+        with col4:
 
             st.write("Billed Demand:", billed_demand)
 
@@ -343,6 +231,10 @@ if uploaded_file:
                 )
 
                 wb = load_workbook(template_path)
+
+                # ---------------------------------------------------
+                # SELECT FIRST SHEET
+                # ---------------------------------------------------
 
                 ws = wb[wb.sheetnames[0]]
 
@@ -393,39 +285,19 @@ if uploaded_file:
                 ws["C22"] = electricity_duty
 
                 # ---------------------------------------------------
-                # SOLAR UNITS AT CONSUMPTION END
+                # MANUAL SOLAR GENERATION
                 # ---------------------------------------------------
 
-                ws["H25"] = (
-                    float(clean_number(
-                        current_month_generation
-                    ))
-                    if current_month_generation else 0
-                )
+                ws["H25"] = current_month_generation
 
                 # ---------------------------------------------------
-                # TOD ZONES
+                # MANUAL TOD ZONES
                 # ---------------------------------------------------
 
-                ws["K26"] = (
-                    float(clean_number(a_zone))
-                    if a_zone else 0
-                )
-
-                ws["L26"] = (
-                    float(clean_number(b_zone))
-                    if b_zone else 0
-                )
-
-                ws["M26"] = (
-                    float(clean_number(c_zone))
-                    if c_zone else 0
-                )
-
-                ws["N26"] = (
-                    float(clean_number(d_zone))
-                    if d_zone else 0
-                )
+                ws["K26"] = a_zone
+                ws["L26"] = b_zone
+                ws["M26"] = c_zone
+                ws["N26"] = d_zone
 
                 # ---------------------------------------------------
                 # OTHER BILL VALUES
