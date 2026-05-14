@@ -34,16 +34,6 @@ plant_load = st.number_input(
 )
 
 # ---------------------------------------------------
-# MANUAL CURRENT MONTH GENERATION
-# ---------------------------------------------------
-
-current_month_generation = st.number_input(
-    "Enter Current Month Generation (kWh)",
-    min_value=0.0,
-    value=237415.0
-)
-
-# ---------------------------------------------------
 # FILE UPLOAD
 # ---------------------------------------------------
 
@@ -114,7 +104,7 @@ if uploaded_file:
 
         # ---------------------------------------------------
         # DEBUG PDF TEXT
-        # Uncomment if needed
+        # Uncomment below if extraction fails
         # ---------------------------------------------------
 
         # st.text(text)
@@ -144,13 +134,47 @@ if uploaded_file:
         )
 
         # ---------------------------------------------------
-        # TRANSMISSION CHARGES FROM PDF
+        # TRANSMISSION CHARGES
         # ---------------------------------------------------
 
         transmission_charges = extract_value(
             r'Transmission Charges\s*:?[\s\n₹]*([\d,\.]+)',
             text
         )
+
+        # ---------------------------------------------------
+        # CURRENT MONTH GENERATION
+        # ---------------------------------------------------
+
+        current_month_generation = ""
+
+        generation_patterns = [
+
+            r'Current\s+Month\s+Generation\s*:?[\s\n]*([\d,]+)',
+
+            r'Current\s+Month.*?Generation.*?([\d,]+)',
+
+            r'Solar\s+Generation\s*:?[\s\n]*([\d,]+)',
+
+            r'Generation\s*:?[\s\n]*([\d,]+)',
+
+            r'([\d,]+)\s*kWh'
+
+        ]
+
+        for pattern in generation_patterns:
+
+            match = re.search(
+                pattern,
+                text,
+                re.IGNORECASE | re.DOTALL
+            )
+
+            if match:
+
+                current_month_generation = match.group(1)
+
+                break
 
         # ---------------------------------------------------
         # STATIC VALUES
@@ -227,7 +251,7 @@ if uploaded_file:
                 ws["C3"] = plant_load
 
                 # ---------------------------------------------------
-                # TRANSMISSION CHARGES FROM BILL
+                # TRANSMISSION CHARGES
                 # ---------------------------------------------------
 
                 ws["C9"] = (
@@ -267,7 +291,10 @@ if uploaded_file:
                 # CURRENT MONTH GENERATION
                 # ---------------------------------------------------
 
-                ws["H25"] = current_month_generation
+                ws["H25"] = (
+                    float(clean_number(current_month_generation))
+                    if current_month_generation else 0
+                )
 
                 # ---------------------------------------------------
                 # OTHER BILL VALUES
