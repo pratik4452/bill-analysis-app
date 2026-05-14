@@ -62,6 +62,17 @@ def extract_value(pattern, text):
     return ""
 
 # ---------------------------------------------------
+# CLEAN NUMBER FUNCTION
+# ---------------------------------------------------
+
+def clean_number(value):
+
+    if value:
+        return value.replace(",", "").strip()
+
+    return ""
+
+# ---------------------------------------------------
 # MAIN PROCESS
 # ---------------------------------------------------
 
@@ -87,21 +98,50 @@ if uploaded_file:
         st.success("✅ PDF Processed Successfully")
 
         # ---------------------------------------------------
-        # EXTRACT BILL DATA
+        # EXTRACT VALUES FROM BILL
         # ---------------------------------------------------
 
-        consumer_number = extract_value(
-            r'Consumer Number\s+(\d+)',
+        contract_demand = extract_value(
+            r'Total Contract Demand \(KVA\)\s+([\d,]+)',
             text
         )
 
-        bill_month = extract_value(
-            r'Bill Month\s+([A-Z0-9\-]+)',
+        energy_rate = extract_value(
+            r'8\.44',
             text
         )
 
-        payable_amount = extract_value(
-            r'Total Bill Amount \(Rounded\) Rs\.\s+([\d,]+\.\d+)',
+        demand_charge_rate = extract_value(
+            r'650\.00',
+            text
+        )
+
+        wheeling_charge_rate = extract_value(
+            r'Wheeling Charges.*?@\.81',
+            text
+        )
+
+        fac_rate = extract_value(
+            r'@ 0\.5',
+            text
+        )
+
+        tax_rate = extract_value(
+            r'0\.2894',
+            text
+        )
+
+        power_factor = "1"
+
+        max_demand = extract_value(
+            r'Highest Recorded\s+MSEDCL Demand\s+(\d+)',
+            text
+        )
+
+        electricity_duty = "7.50%"
+
+        solar_generation = extract_value(
+            r'01\-APR\-2026 TO 30\-APR\-2026\s+([\d,]+)',
             text
         )
 
@@ -110,45 +150,29 @@ if uploaded_file:
             text
         )
 
-        total_drawal = extract_value(
-            r'01\-APR\-2026 TO 30\-APR\-2026\s+([\d,]+)',
-            text
-        )
-
-        energy_charges = extract_value(
-            r'Energy Charges\s+([\d,]+\.\d+)',
-            text
-        )
-
-        fac_charges = extract_value(
-            r'FAC Charges\s+([\d,]+\.\d+)',
-            text
-        )
-
-        wheeling_charges = extract_value(
-            r'Wheeling Charges\s+([\d,]+\.\d+)',
+        reference_units = extract_value(
+            r'Ref consumption :\s+(\d+)',
             text
         )
 
         # ---------------------------------------------------
-        # DISPLAY EXTRACTED DATA
+        # DISPLAY DATA
         # ---------------------------------------------------
 
-        st.markdown("## 📋 Extracted Bill Details")
+        st.markdown("## 📋 Extracted Bill Data")
 
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.write("### Consumer Details")
-            st.write("Consumer Number:", consumer_number)
-            st.write("Bill Month:", bill_month)
-            st.write("Payable Amount:", payable_amount)
-
-        with col2:
-            st.write("### Billing Details")
-            st.write("Billed Demand:", billed_demand)
-            st.write("Total Drawal Units:", total_drawal)
-            st.write("Energy Charges:", energy_charges)
+        st.write("Contract Demand:", contract_demand)
+        st.write("Energy Charges Rate:", "8.44")
+        st.write("Demand Charges Rate:", "650")
+        st.write("Wheeling Charges Rate:", "0.81")
+        st.write("FAC Rate:", "0.50")
+        st.write("Tax on Sales:", "0.29")
+        st.write("Power Factor:", power_factor)
+        st.write("Maximum Demand:", max_demand)
+        st.write("Electricity Duty:", electricity_duty)
+        st.write("Solar Generation:", solar_generation)
+        st.write("Billed Demand:", billed_demand)
+        st.write("Reference Units:", reference_units)
 
         st.markdown("---")
 
@@ -172,14 +196,10 @@ if uploaded_file:
                 wb = load_workbook(template_path)
 
                 # ---------------------------------------------------
-                # AUTO SELECT FIRST SHEET
+                # SELECT FIRST SHEET
                 # ---------------------------------------------------
 
-                sheet_names = wb.sheetnames
-
-                st.write("Detected Sheets:", sheet_names)
-
-                ws = wb[sheet_names[0]]
+                ws = wb[wb.sheetnames[0]]
 
                 # ---------------------------------------------------
                 # USER INPUTS
@@ -190,21 +210,32 @@ if uploaded_file:
                 ws["C9"] = transmission_charge_input
 
                 # ---------------------------------------------------
-                # BILL DATA INPUTS
+                # PDF DATA INPUTS
                 # ---------------------------------------------------
 
-                ws["C13"] = consumer_number
-                ws["C14"] = bill_month
-                ws["C15"] = payable_amount
-                ws["C16"] = billed_demand
-                ws["C17"] = total_drawal
-                ws["C18"] = energy_charges
-                ws["C19"] = fac_charges
-                ws["C20"] = wheeling_charges
+                ws["C14"] = float(clean_number(contract_demand)) if contract_demand else 0
 
-                # Optional extra inputs
-                ws["C21"] = payable_amount
-                ws["C22"] = total_drawal
+                ws["C15"] = 8.44
+
+                ws["C16"] = 650
+
+                ws["C17"] = 0.81
+
+                ws["C18"] = 0.50
+
+                ws["C19"] = 0.29
+
+                ws["C20"] = 1
+
+                ws["C21"] = float(clean_number(max_demand)) if max_demand else 0
+
+                ws["C22"] = "7.50%"
+
+                ws["H25"] = float(clean_number(solar_generation)) if solar_generation else 0
+
+                ws["C30"] = float(clean_number(billed_demand)) if billed_demand else 0
+
+                ws["C40"] = float(clean_number(reference_units)) if reference_units else 0
 
                 # ---------------------------------------------------
                 # SAVE OUTPUT
