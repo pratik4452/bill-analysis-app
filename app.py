@@ -6,7 +6,7 @@ from openpyxl import load_workbook
 from io import BytesIO
 
 # ---------------------------------------------------
-# PAGE CONFIGURATION
+# PAGE CONFIG
 # ---------------------------------------------------
 
 st.set_page_config(
@@ -18,7 +18,29 @@ st.title("⚡ DISCOM Bill Analysis App")
 st.subheader("Before Solar vs After Solar Analysis")
 
 # ---------------------------------------------------
-# FILE UPLOAD
+# USER INPUTS
+# ---------------------------------------------------
+
+solar_capacity = st.number_input(
+    "Enter Solar Capacity (kW)",
+    min_value=0.0,
+    value=1000.0
+)
+
+plant_load = st.number_input(
+    "Enter Plant Load / Contract Demand",
+    min_value=0.0,
+    value=1800.0
+)
+
+transmission_charge_input = st.number_input(
+    "Enter Transmission Charges",
+    min_value=0.0,
+    value=0.0
+)
+
+# ---------------------------------------------------
+# PDF UPLOAD
 # ---------------------------------------------------
 
 uploaded_file = st.file_uploader(
@@ -40,7 +62,7 @@ def extract_value(pattern, text):
     return ""
 
 # ---------------------------------------------------
-# MAIN PROCESS
+# MAIN LOGIC
 # ---------------------------------------------------
 
 if uploaded_file:
@@ -65,7 +87,7 @@ if uploaded_file:
         st.success("✅ PDF Processed Successfully")
 
         # ---------------------------------------------------
-        # EXTRACT DATA USING REGEX
+        # EXTRACT BILL DATA
         # ---------------------------------------------------
 
         consumer_number = extract_value(
@@ -93,8 +115,23 @@ if uploaded_file:
             text
         )
 
+        energy_charges = extract_value(
+            r'Energy Charges\s+([\d,]+\.\d+)',
+            text
+        )
+
+        fac_charges = extract_value(
+            r'FAC Charges\s+([\d,]+\.\d+)',
+            text
+        )
+
+        wheeling_charges = extract_value(
+            r'Wheeling Charges\s+([\d,]+\.\d+)',
+            text
+        )
+
         # ---------------------------------------------------
-        # DISPLAY EXTRACTED DATA
+        # SHOW EXTRACTED DATA
         # ---------------------------------------------------
 
         st.markdown("## 📋 Extracted Bill Details")
@@ -102,20 +139,18 @@ if uploaded_file:
         col1, col2 = st.columns(2)
 
         with col1:
-            st.write("### Consumer Details")
             st.write("Consumer Number:", consumer_number)
             st.write("Bill Month:", bill_month)
+            st.write("Payable Amount:", payable_amount)
 
         with col2:
-            st.write("### Billing Details")
-            st.write("Payable Amount:", payable_amount)
             st.write("Billed Demand:", billed_demand)
-            st.write("Total Drawal Units:", total_drawal)
+            st.write("Total Drawal:", total_drawal)
 
         st.markdown("---")
 
         # ---------------------------------------------------
-        # GENERATE EXCEL REPORT
+        # GENERATE REPORT
         # ---------------------------------------------------
 
         if st.button("Generate Excel Report"):
@@ -140,26 +175,29 @@ if uploaded_file:
                 ws = wb["Apr 26_Supreme"]
 
                 # ---------------------------------------------------
-                # SAFE CELLS (NON-MERGED)
-                # ---------------------------------------------------
-                # Temporary safe cells for testing
-                # Later map to actual yellow cells
+                # USER INPUT CELLS
                 # ---------------------------------------------------
 
-                ws["Z1"] = "Consumer Number"
-                ws["AA1"] = consumer_number
+                ws["C2"] = solar_capacity
+                ws["C3"] = plant_load
+                ws["C9"] = transmission_charge_input
 
-                ws["Z2"] = "Bill Month"
-                ws["AA2"] = bill_month
+                # ---------------------------------------------------
+                # BILL DATA INPUTS
+                # ---------------------------------------------------
 
-                ws["Z3"] = "Payable Amount"
-                ws["AA3"] = payable_amount
+                ws["C13"] = consumer_number
+                ws["C14"] = bill_month
+                ws["C15"] = payable_amount
+                ws["C16"] = billed_demand
+                ws["C17"] = total_drawal
+                ws["C18"] = energy_charges
+                ws["C19"] = fac_charges
+                ws["C20"] = wheeling_charges
 
-                ws["Z4"] = "Billed Demand"
-                ws["AA4"] = billed_demand
-
-                ws["Z5"] = "Total Drawal"
-                ws["AA5"] = total_drawal
+                # Additional cells if needed
+                ws["C21"] = payable_amount
+                ws["C22"] = total_drawal
 
                 # ---------------------------------------------------
                 # SAVE OUTPUT
@@ -171,7 +209,7 @@ if uploaded_file:
 
                 output.seek(0)
 
-                st.success("✅ Excel Report Generated Successfully")
+                st.success("✅ Before vs After Solar Report Generated")
 
                 # ---------------------------------------------------
                 # DOWNLOAD BUTTON
