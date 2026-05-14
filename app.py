@@ -4,17 +4,33 @@ import re
 from openpyxl import load_workbook
 from io import BytesIO
 
-st.set_page_config(page_title="DISCOM Bill Analysis", layout="wide")
+# -----------------------------------
+# PAGE SETTINGS
+# -----------------------------------
+
+st.set_page_config(
+    page_title="DISCOM Bill Analysis",
+    layout="wide"
+)
 
 st.title("⚡ DISCOM Bill Analysis App")
 st.subheader("Before Solar vs After Solar Analysis")
+
+# -----------------------------------
+# FILE UPLOAD
+# -----------------------------------
 
 uploaded_file = st.file_uploader(
     "Upload Electricity Bill PDF",
     type=["pdf"]
 )
 
+# -----------------------------------
+# HELPER FUNCTION
+# -----------------------------------
+
 def extract_value(pattern, text):
+
     match = re.search(pattern, text)
 
     if match:
@@ -22,86 +38,124 @@ def extract_value(pattern, text):
 
     return ""
 
+# -----------------------------------
+# PROCESS PDF
+# -----------------------------------
+
 if uploaded_file:
 
     text = ""
 
-    with pdfplumber.open(uploaded_file) as pdf:
+    try:
 
-        for page in pdf.pages:
+        # READ PDF
+        with pdfplumber.open(uploaded_file) as pdf:
 
-            extracted = page.extract_text()
+            for page in pdf.pages:
 
-            if extracted:
-                text += extracted
+                extracted = page.extract_text()
 
-    st.success("PDF Processed Successfully")
+                if extracted:
+                    text += extracted
 
-    consumer_number = extract_value(
-        r'Consumer Number\\s+(\\d+)',
-        text
-    )
+        st.success("✅ PDF Processed Successfully")
 
-    bill_month = extract_value(
-        r'Bill Month\\s+([A-Z\\-0-9]+)',
-        text
-    )
+        # -----------------------------------
+        # EXTRACT DATA
+        # -----------------------------------
 
-    payable_amount = extract_value(
-        r'Total Bill Amount \\(Rounded\\) Rs\\.\\s+([\\d,]+\\.\\d+)',
-        text
-    )
-
-    billed_demand = extract_value(
-        r'Billed Demand\\s+([\\d\\.]+)',
-        text
-    )
-
-    total_drawal = extract_value(
-        r'01\\-APR\\-2026 TO 30\\-APR\\-2026\\s+([\\d,]+)',
-        text
-    )
-
-    st.markdown("## Extracted Bill Details")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.write("Consumer Number:", consumer_number)
-        st.write("Bill Month:", bill_month)
-
-    with col2:
-        st.write("Payable Amount:", payable_amount)
-        st.write("Billed Demand:", billed_demand)
-
-    st.markdown("---")
-
-    if st.button("Generate Excel Report"):
-
-        wb = load_workbook("templates/bill_template.xlsx")
-
-        ws = wb.active
-
-        # SAMPLE CELL MAPPING
-        # CHANGE THESE CELLS AS PER YOUR TEMPLATE
-
-        ws["C5"] = consumer_number
-        ws["C6"] = bill_month
-        ws["C7"] = payable_amount
-        ws["C8"] = billed_demand
-        ws["C9"] = total_drawal
-
-        output = BytesIO()
-
-        wb.save(output)
-
-        output.seek(0)
-
-        st.success("Excel Report Generated")
-
-        st.download_button(
-            label="Download Excel Report",
-            data=output,
-            file_name="Before_After_Solar_Report.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        consumer_number = extract_value(
+            r'Consumer Number\s+(\d+)',
+            text
         )
+
+        bill_month = extract_value(
+            r'Bill Month\s+([A-Z0-9\-]+)',
+            text
+        )
+
+        payable_amount = extract_value(
+            r'Total Bill Amount \(Rounded\) Rs\.\s+([\d,]+\.\d+)',
+            text
+        )
+
+        billed_demand = extract_value(
+            r'Billed Demand\s+([\d\.]+)',
+            text
+        )
+
+        total_drawal = extract_value(
+            r'01\-APR\-2026 TO 30\-APR\-2026\s+([\d,]+)',
+            text
+        )
+
+        # -----------------------------------
+        # SHOW DATA
+        # -----------------------------------
+
+        st.markdown("## 📋 Extracted Bill Details")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.write("### Consumer Details")
+            st.write("Consumer Number:", consumer_number)
+            st.write("Bill Month:", bill_month)
+
+        with col2:
+            st.write("### Billing Details")
+            st.write("Payable Amount:", payable_amount)
+            st.write("Billed Demand:", billed_demand)
+            st.write("Total Drawal Units:", total_drawal)
+
+        st.markdown("---")
+
+        # -----------------------------------
+        # GENERATE EXCEL
+        # -----------------------------------
+
+        if st.button("Generate Excel Report"):
+
+            try:
+
+                # LOAD TEMPLATE
+                wb = load_workbook("templates/bill_template.xlsx")
+
+                # SELECT SHEET
+                ws = wb.active
+
+                # -----------------------------------
+                # SAMPLE CELL MAPPING
+                # CHANGE AS PER YOUR TEMPLATE
+                # -----------------------------------
+
+                ws["C5"] = consumer_number
+                ws["C6"] = bill_month
+                ws["C7"] = payable_amount
+                ws["C8"] = billed_demand
+                ws["C9"] = total_drawal
+
+                # SAVE TO MEMORY
+                output = BytesIO()
+
+                wb.save(output)
+
+                output.seek(0)
+
+                st.success("✅ Excel Report Generated Successfully")
+
+                # DOWNLOAD BUTTON
+                st.download_button(
+                    label="⬇ Download Excel Report",
+                    data=output,
+                    file_name="Before_After_Solar_Report.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
+            except Exception as excel_error:
+
+                st.error(f"Excel Generation Error: {excel_error}")
+
+    except Exception as e:
+
+        st.error(f"PDF Processing Error: {e}")
