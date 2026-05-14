@@ -18,20 +18,12 @@ st.title("⚡ DISCOM Bill Analysis App")
 st.subheader("Before Solar vs After Solar Analysis")
 
 # ---------------------------------------------------
-# USER INPUTS
+# FIXED VALUES
 # ---------------------------------------------------
 
-solar_capacity = st.number_input(
-    "Enter Solar Capacity (kW)",
-    min_value=0.0,
-    value=1000.0
-)
+solar_capacity = 1000
 
-plant_load = st.number_input(
-    "Enter Plant Load / Contract Demand",
-    min_value=0.0,
-    value=1800.0
-)
+plant_load = 1800
 
 # ---------------------------------------------------
 # MANUAL CURRENT MONTH GENERATION
@@ -153,18 +145,6 @@ if uploaded_file:
         )
 
         # ---------------------------------------------------
-        # STATIC VALUES
-        # ---------------------------------------------------
-
-        energy_rate = 8.44
-        demand_charge_rate = 650
-        wheeling_charge_rate = 0.81
-        fac_rate = 0.50
-        tax_rate = 0.29
-        power_factor = 1
-        electricity_duty = "7.50%"
-
-        # ---------------------------------------------------
         # DISPLAY DATA
         # ---------------------------------------------------
 
@@ -175,23 +155,28 @@ if uploaded_file:
         with col1:
 
             st.write("Contract Demand:", contract_demand)
-            st.write("Energy Charges Rate:", energy_rate)
-            st.write("Demand Charges Rate:", demand_charge_rate)
-            st.write("Wheeling Charges Rate:", wheeling_charge_rate)
-            st.write("FAC Rate:", fac_rate)
-            st.write("Tax on Sales:", tax_rate)
+            st.write("Transmission Charges:", transmission_charges)
+            st.write("Maximum Demand:", max_demand)
 
         with col2:
 
-            st.write("Power Factor:", power_factor)
-            st.write("Maximum Demand:", max_demand)
-            st.write("Electricity Duty:", electricity_duty)
-            st.write("Transmission Charges:", transmission_charges)
             st.write("Current Month Generation:", current_month_generation)
             st.write("Billed Demand:", billed_demand)
             st.write("Reference Units:", reference_units)
 
         st.markdown("---")
+
+        # ---------------------------------------------------
+        # STATIC VALUES
+        # ---------------------------------------------------
+
+        energy_rate = 8.44
+        demand_charge_rate = 650
+        wheeling_charge_rate = 0.81
+        fac_rate = 0.50
+        tax_rate = 0.29
+        power_factor = 1
+        electricity_duty = "7.50%"
 
         # ---------------------------------------------------
         # GENERATE EXCEL REPORT
@@ -219,7 +204,7 @@ if uploaded_file:
                 ws = wb[wb.sheetnames[0]]
 
                 # ---------------------------------------------------
-                # USER INPUTS
+                # FIXED VALUES
                 # ---------------------------------------------------
 
                 ws["C2"] = solar_capacity
@@ -227,7 +212,7 @@ if uploaded_file:
                 ws["C3"] = plant_load
 
                 # ---------------------------------------------------
-                # TRANSMISSION CHARGES FROM BILL
+                # TRANSMISSION CHARGES
                 # ---------------------------------------------------
 
                 ws["C9"] = (
