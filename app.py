@@ -52,6 +52,11 @@ with col1:
         value=0.0
     )
 
+    debit_bill_adjustment = st.number_input(
+        "Debit Bill Adjustment (₹)",
+        value=0.0
+    )
+
 with col2:
 
     c_zone = st.number_input(
@@ -63,6 +68,11 @@ with col2:
     d_zone = st.number_input(
         "D Zone Units",
         min_value=0.0,
+        value=0.0
+    )
+
+    grid_support_charges = st.number_input(
+        "Grid Support Charges (₹)",
         value=0.0
     )
 
@@ -264,15 +274,10 @@ if uploaded_file:
                 )
 
                 ws["C15"] = energy_rate
-
                 ws["C16"] = demand_charge_rate
-
                 ws["C17"] = wheeling_charge_rate
-
                 ws["C18"] = fac_rate
-
                 ws["C19"] = tax_rate
-
                 ws["C20"] = power_factor
 
                 ws["C21"] = (
@@ -288,16 +293,28 @@ if uploaded_file:
                 # MANUAL SOLAR GENERATION
                 # ---------------------------------------------------
 
-                ws["H25"] = current_month_generation
+                ws["H25"] = float(current_month_generation)
 
                 # ---------------------------------------------------
                 # MANUAL TOD ZONES
                 # ---------------------------------------------------
 
-                ws["K26"] = a_zone
-                ws["L26"] = b_zone
-                ws["M26"] = c_zone
-                ws["N26"] = d_zone
+                ws["K26"] = float(a_zone)
+                ws["L26"] = float(b_zone)
+                ws["M26"] = float(c_zone)
+                ws["N26"] = float(d_zone)
+
+                # ---------------------------------------------------
+                # DEBIT BILL ADJUSTMENT
+                # ---------------------------------------------------
+
+                ws["C50"] = float(debit_bill_adjustment)
+
+                # ---------------------------------------------------
+                # GRID SUPPORT CHARGES
+                # ---------------------------------------------------
+
+                ws["C51"] = float(grid_support_charges)
 
                 # ---------------------------------------------------
                 # OTHER BILL VALUES
@@ -312,6 +329,13 @@ if uploaded_file:
                     float(clean_number(reference_units))
                     if reference_units else 0
                 )
+
+                # ---------------------------------------------------
+                # FORCE FORMULA RECALCULATION
+                # ---------------------------------------------------
+
+                wb.calculation.fullCalcOnLoad = True
+                wb.calculation.forceFullCalc = True
 
                 # ---------------------------------------------------
                 # SAVE OUTPUT
