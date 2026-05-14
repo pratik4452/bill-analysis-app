@@ -1,12 +1,13 @@
 import streamlit as st
 import pdfplumber
 import re
+import os
 from openpyxl import load_workbook
 from io import BytesIO
 
-# -----------------------------------
-# PAGE SETTINGS
-# -----------------------------------
+# -------------------------------------------------
+# PAGE CONFIG
+# -------------------------------------------------
 
 st.set_page_config(
     page_title="DISCOM Bill Analysis",
@@ -16,18 +17,18 @@ st.set_page_config(
 st.title("⚡ DISCOM Bill Analysis App")
 st.subheader("Before Solar vs After Solar Analysis")
 
-# -----------------------------------
+# -------------------------------------------------
 # FILE UPLOAD
-# -----------------------------------
+# -------------------------------------------------
 
 uploaded_file = st.file_uploader(
     "Upload Electricity Bill PDF",
     type=["pdf"]
 )
 
-# -----------------------------------
+# -------------------------------------------------
 # HELPER FUNCTION
-# -----------------------------------
+# -------------------------------------------------
 
 def extract_value(pattern, text):
 
@@ -38,9 +39,9 @@ def extract_value(pattern, text):
 
     return ""
 
-# -----------------------------------
-# PROCESS PDF
-# -----------------------------------
+# -------------------------------------------------
+# MAIN LOGIC
+# -------------------------------------------------
 
 if uploaded_file:
 
@@ -48,7 +49,10 @@ if uploaded_file:
 
     try:
 
+        # -----------------------------------------
         # READ PDF
+        # -----------------------------------------
+
         with pdfplumber.open(uploaded_file) as pdf:
 
             for page in pdf.pages:
@@ -60,9 +64,9 @@ if uploaded_file:
 
         st.success("✅ PDF Processed Successfully")
 
-        # -----------------------------------
+        # -----------------------------------------
         # EXTRACT DATA
-        # -----------------------------------
+        # -----------------------------------------
 
         consumer_number = extract_value(
             r'Consumer Number\s+(\d+)',
@@ -89,9 +93,9 @@ if uploaded_file:
             text
         )
 
-        # -----------------------------------
-        # SHOW DATA
-        # -----------------------------------
+        # -----------------------------------------
+        # DISPLAY EXTRACTED DATA
+        # -----------------------------------------
 
         st.markdown("## 📋 Extracted Bill Details")
 
@@ -110,32 +114,53 @@ if uploaded_file:
 
         st.markdown("---")
 
-        # -----------------------------------
+        # -----------------------------------------
         # GENERATE EXCEL
-        # -----------------------------------
+        # -----------------------------------------
 
         if st.button("Generate Excel Report"):
 
             try:
 
-                # LOAD TEMPLATE
-                wb = load_workbook("templates/bill_template.xlsx")
+                # TEMPLATE PATH
+                template_path = os.path.join(
+                    "templates",
+                    "bill_template.xlsx"
+                )
 
-                # SELECT SHEET
-                ws = wb.active
+                # LOAD EXCEL
+                wb = load_workbook(template_path)
 
-                # -----------------------------------
-                # SAMPLE CELL MAPPING
-                # CHANGE AS PER YOUR TEMPLATE
-                # -----------------------------------
+                # SHOW SHEETS
+                st.write("Available Sheets:", wb.sheetnames)
 
-                ws["C5"] = consumer_number
-                ws["C6"] = bill_month
-                ws["C7"] = payable_amount
-                ws["C8"] = billed_demand
-                ws["C9"] = total_drawal
+                # SELECT FIRST SHEET
+                ws = wb[wb.sheetnames[0]]
 
-                # SAVE TO MEMORY
+                # -------------------------------------------------
+                # IMPORTANT:
+                # USE ONLY NON-MERGED SAFE CELLS
+                # -------------------------------------------------
+
+                ws["B2"] = "Consumer Number"
+                ws["C2"] = consumer_number
+
+                ws["B3"] = "Bill Month"
+                ws["C3"] = bill_month
+
+                ws["B4"] = "Payable Amount"
+                ws["C4"] = payable_amount
+
+                ws["B5"] = "Billed Demand"
+                ws["C5"] = billed_demand
+
+                ws["B6"] = "Total Drawal"
+                ws["C6"] = total_drawal
+
+                # -----------------------------------------
+                # SAVE OUTPUT
+                # -----------------------------------------
+
                 output = BytesIO()
 
                 wb.save(output)
@@ -144,7 +169,10 @@ if uploaded_file:
 
                 st.success("✅ Excel Report Generated Successfully")
 
+                # -----------------------------------------
                 # DOWNLOAD BUTTON
+                # -----------------------------------------
+
                 st.download_button(
                     label="⬇ Download Excel Report",
                     data=output,
