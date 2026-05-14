@@ -243,23 +243,33 @@ if uploaded_file:
                 wb = load_workbook(template_path)
 
                 # ---------------------------------------------------
-                # SELECT FIRST SHEET
+                # SELECT SHEETS
                 # ---------------------------------------------------
 
-                ws = wb[wb.sheetnames[0]]
+                input_sheet = wb[wb.sheetnames[0]]
+
+                output_sheet_name = "Bill After Solar_Apr 26"
+
+                if output_sheet_name in wb.sheetnames:
+
+                    output_sheet = wb[output_sheet_name]
+
+                else:
+
+                    output_sheet = wb[wb.sheetnames[1]]
 
                 # ---------------------------------------------------
                 # FIXED VALUES
                 # ---------------------------------------------------
 
-                ws["C2"] = solar_capacity
-                ws["C3"] = plant_load
+                input_sheet["C2"] = solar_capacity
+                input_sheet["C3"] = plant_load
 
                 # ---------------------------------------------------
                 # TRANSMISSION CHARGES
                 # ---------------------------------------------------
 
-                ws["C9"] = (
+                input_sheet["C9"] = (
                     float(clean_number(transmission_charges))
                     if transmission_charges else 0
                 )
@@ -268,66 +278,74 @@ if uploaded_file:
                 # BILL VALUES
                 # ---------------------------------------------------
 
-                ws["C14"] = (
+                input_sheet["C14"] = (
                     float(clean_number(contract_demand))
                     if contract_demand else 0
                 )
 
-                ws["C15"] = energy_rate
-                ws["C16"] = demand_charge_rate
-                ws["C17"] = wheeling_charge_rate
-                ws["C18"] = fac_rate
-                ws["C19"] = tax_rate
-                ws["C20"] = power_factor
+                input_sheet["C15"] = energy_rate
+                input_sheet["C16"] = demand_charge_rate
+                input_sheet["C17"] = wheeling_charge_rate
+                input_sheet["C18"] = fac_rate
+                input_sheet["C19"] = tax_rate
+                input_sheet["C20"] = power_factor
 
-                ws["C21"] = (
+                input_sheet["C21"] = (
                     float(clean_number(
                         highest_recorded_msedcl_demand
                     ))
                     if highest_recorded_msedcl_demand else 0
                 )
 
-                ws["C22"] = electricity_duty
+                input_sheet["C22"] = electricity_duty
 
                 # ---------------------------------------------------
                 # MANUAL SOLAR GENERATION
                 # ---------------------------------------------------
 
-                ws["H25"] = float(current_month_generation)
+                input_sheet["H25"] = float(
+                    current_month_generation
+                )
 
                 # ---------------------------------------------------
                 # MANUAL TOD ZONES
                 # ---------------------------------------------------
 
-                ws["K26"] = float(a_zone)
-                ws["L26"] = float(b_zone)
-                ws["M26"] = float(c_zone)
-                ws["N26"] = float(d_zone)
-
-                # ---------------------------------------------------
-                # DEBIT BILL ADJUSTMENT
-                # ---------------------------------------------------
-
-                ws["C50"] = float(debit_bill_adjustment)
-
-                # ---------------------------------------------------
-                # GRID SUPPORT CHARGES
-                # ---------------------------------------------------
-
-                ws["C51"] = float(grid_support_charges)
+                input_sheet["K26"] = float(a_zone)
+                input_sheet["L26"] = float(b_zone)
+                input_sheet["M26"] = float(c_zone)
+                input_sheet["N26"] = float(d_zone)
 
                 # ---------------------------------------------------
                 # OTHER BILL VALUES
                 # ---------------------------------------------------
 
-                ws["C30"] = (
+                input_sheet["C30"] = (
                     float(clean_number(billed_demand))
                     if billed_demand else 0
                 )
 
-                ws["C40"] = (
+                input_sheet["C40"] = (
                     float(clean_number(reference_units))
                     if reference_units else 0
+                )
+
+                # ---------------------------------------------------
+                # OUTPUT SHEET VALUES
+                # ---------------------------------------------------
+
+                # C22 = Only Debit Bill Adjustment
+
+                output_sheet["C22"] = float(
+                    debit_bill_adjustment
+                )
+
+                # D22 = Debit + Grid Support
+
+                output_sheet["D22"] = (
+                    float(debit_bill_adjustment)
+                    +
+                    float(grid_support_charges)
                 )
 
                 # ---------------------------------------------------
