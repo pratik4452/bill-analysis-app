@@ -40,7 +40,7 @@ transmission_charge_input = st.number_input(
 )
 
 # ---------------------------------------------------
-# PDF UPLOAD
+# FILE UPLOAD
 # ---------------------------------------------------
 
 uploaded_file = st.file_uploader(
@@ -62,7 +62,7 @@ def extract_value(pattern, text):
     return ""
 
 # ---------------------------------------------------
-# MAIN LOGIC
+# MAIN PROCESS
 # ---------------------------------------------------
 
 if uploaded_file:
@@ -131,7 +131,7 @@ if uploaded_file:
         )
 
         # ---------------------------------------------------
-        # SHOW EXTRACTED DATA
+        # DISPLAY EXTRACTED DATA
         # ---------------------------------------------------
 
         st.markdown("## 📋 Extracted Bill Details")
@@ -139,18 +139,21 @@ if uploaded_file:
         col1, col2 = st.columns(2)
 
         with col1:
+            st.write("### Consumer Details")
             st.write("Consumer Number:", consumer_number)
             st.write("Bill Month:", bill_month)
             st.write("Payable Amount:", payable_amount)
 
         with col2:
+            st.write("### Billing Details")
             st.write("Billed Demand:", billed_demand)
-            st.write("Total Drawal:", total_drawal)
+            st.write("Total Drawal Units:", total_drawal)
+            st.write("Energy Charges:", energy_charges)
 
         st.markdown("---")
 
         # ---------------------------------------------------
-        # GENERATE REPORT
+        # GENERATE EXCEL REPORT
         # ---------------------------------------------------
 
         if st.button("Generate Excel Report"):
@@ -169,13 +172,17 @@ if uploaded_file:
                 wb = load_workbook(template_path)
 
                 # ---------------------------------------------------
-                # SELECT INPUT SHEET
+                # AUTO SELECT FIRST SHEET
                 # ---------------------------------------------------
 
-                ws = wb["Apr 26_Supreme"]
+                sheet_names = wb.sheetnames
+
+                st.write("Detected Sheets:", sheet_names)
+
+                ws = wb[sheet_names[0]]
 
                 # ---------------------------------------------------
-                # USER INPUT CELLS
+                # USER INPUTS
                 # ---------------------------------------------------
 
                 ws["C2"] = solar_capacity
@@ -195,7 +202,7 @@ if uploaded_file:
                 ws["C19"] = fac_charges
                 ws["C20"] = wheeling_charges
 
-                # Additional cells if needed
+                # Optional extra inputs
                 ws["C21"] = payable_amount
                 ws["C22"] = total_drawal
 
@@ -209,7 +216,7 @@ if uploaded_file:
 
                 output.seek(0)
 
-                st.success("✅ Before vs After Solar Report Generated")
+                st.success("✅ Before vs After Solar Report Generated Successfully")
 
                 # ---------------------------------------------------
                 # DOWNLOAD BUTTON
