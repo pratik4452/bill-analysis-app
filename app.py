@@ -54,7 +54,7 @@ uploaded_file = st.file_uploader(
 
 def extract_value(pattern, text):
 
-    match = re.search(pattern, text)
+    match = re.search(pattern, text, re.DOTALL)
 
     if match:
         return match.group(1)
@@ -62,13 +62,13 @@ def extract_value(pattern, text):
     return ""
 
 # ---------------------------------------------------
-# CLEAN NUMBER FUNCTION
+# CLEAN NUMBER
 # ---------------------------------------------------
 
 def clean_number(value):
 
     if value:
-        return value.replace(",", "").strip()
+        return value.replace(",", "").replace("%", "").strip()
 
     return ""
 
@@ -98,7 +98,7 @@ if uploaded_file:
         st.success("✅ PDF Processed Successfully")
 
         # ---------------------------------------------------
-        # EXTRACT VALUES FROM BILL
+        # EXTRACT DATA
         # ---------------------------------------------------
 
         contract_demand = extract_value(
@@ -106,47 +106,18 @@ if uploaded_file:
             text
         )
 
-        energy_rate = extract_value(
-            r'8\.44',
-            text
-        )
-
-        demand_charge_rate = extract_value(
-            r'650\.00',
-            text
-        )
-
-        wheeling_charge_rate = extract_value(
-            r'Wheeling Charges.*?@\.81',
-            text
-        )
-
-        fac_rate = extract_value(
-            r'@ 0\.5',
-            text
-        )
-
-        tax_rate = extract_value(
-            r'0\.2894',
-            text
-        )
-
-        power_factor = "1"
-
         max_demand = extract_value(
             r'Highest Recorded\s+MSEDCL Demand\s+(\d+)',
             text
         )
 
-        electricity_duty = "7.50%"
-
-        solar_generation = extract_value(
-            r'01\-APR\-2026 TO 30\-APR\-2026\s+([\d,]+)',
+        billed_demand = extract_value(
+            r'Billed Demand\s+([\d\.]+)',
             text
         )
 
-        billed_demand = extract_value(
-            r'Billed Demand\s+([\d\.]+)',
+        solar_generation = extract_value(
+            r'01\-APR\-2026 TO 30\-APR\-2026\s+([\d,]+)',
             text
         )
 
@@ -156,17 +127,29 @@ if uploaded_file:
         )
 
         # ---------------------------------------------------
+        # FIXED STATIC VALUES
+        # ---------------------------------------------------
+
+        energy_rate = 8.44
+        demand_charge_rate = 650
+        wheeling_charge_rate = 0.81
+        fac_rate = 0.50
+        tax_rate = 0.29
+        power_factor = 1
+        electricity_duty = "7.50%"
+
+        # ---------------------------------------------------
         # DISPLAY DATA
         # ---------------------------------------------------
 
         st.markdown("## 📋 Extracted Bill Data")
 
         st.write("Contract Demand:", contract_demand)
-        st.write("Energy Charges Rate:", "8.44")
-        st.write("Demand Charges Rate:", "650")
-        st.write("Wheeling Charges Rate:", "0.81")
-        st.write("FAC Rate:", "0.50")
-        st.write("Tax on Sales:", "0.29")
+        st.write("Energy Charges Rate:", energy_rate)
+        st.write("Demand Charges Rate:", demand_charge_rate)
+        st.write("Wheeling Charges Rate:", wheeling_charge_rate)
+        st.write("FAC Rate:", fac_rate)
+        st.write("Tax on Sales:", tax_rate)
         st.write("Power Factor:", power_factor)
         st.write("Maximum Demand:", max_demand)
         st.write("Electricity Duty:", electricity_duty)
@@ -177,16 +160,12 @@ if uploaded_file:
         st.markdown("---")
 
         # ---------------------------------------------------
-        # GENERATE EXCEL REPORT
+        # GENERATE EXCEL
         # ---------------------------------------------------
 
         if st.button("Generate Excel Report"):
 
             try:
-
-                # ---------------------------------------------------
-                # LOAD TEMPLATE
-                # ---------------------------------------------------
 
                 template_path = os.path.join(
                     "templates",
@@ -194,10 +173,6 @@ if uploaded_file:
                 )
 
                 wb = load_workbook(template_path)
-
-                # ---------------------------------------------------
-                # SELECT FIRST SHEET
-                # ---------------------------------------------------
 
                 ws = wb[wb.sheetnames[0]]
 
@@ -210,26 +185,26 @@ if uploaded_file:
                 ws["C9"] = transmission_charge_input
 
                 # ---------------------------------------------------
-                # PDF DATA INPUTS
+                # BILL DATA
                 # ---------------------------------------------------
 
                 ws["C14"] = float(clean_number(contract_demand)) if contract_demand else 0
 
-                ws["C15"] = 8.44
+                ws["C15"] = energy_rate
 
-                ws["C16"] = 650
+                ws["C16"] = demand_charge_rate
 
-                ws["C17"] = 0.81
+                ws["C17"] = wheeling_charge_rate
 
-                ws["C18"] = 0.50
+                ws["C18"] = fac_rate
 
-                ws["C19"] = 0.29
+                ws["C19"] = tax_rate
 
-                ws["C20"] = 1
+                ws["C20"] = power_factor
 
                 ws["C21"] = float(clean_number(max_demand)) if max_demand else 0
 
-                ws["C22"] = "7.50%"
+                ws["C22"] = electricity_duty
 
                 ws["H25"] = float(clean_number(solar_generation)) if solar_generation else 0
 
@@ -247,7 +222,7 @@ if uploaded_file:
 
                 output.seek(0)
 
-                st.success("✅ Before vs After Solar Report Generated Successfully")
+                st.success("✅ Report Generated Successfully")
 
                 # ---------------------------------------------------
                 # DOWNLOAD BUTTON
