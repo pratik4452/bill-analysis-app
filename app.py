@@ -4,8 +4,6 @@ import re
 import os
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
-
 from openpyxl import load_workbook
 from io import BytesIO
 
@@ -127,6 +125,24 @@ def clean_number(value):
         )
 
     return "0"
+
+def safe_float(sheet, cell):
+
+    try:
+
+        value = sheet[cell].value
+
+        if value is None:
+            return 0
+
+        return float(
+            str(value)
+            .replace(",", "")
+        )
+
+    except:
+
+        return 0
 
 # ---------------------------------------------------
 # MAIN PROCESS
@@ -310,14 +326,7 @@ if uploaded_file:
                 )
 
                 # ---------------------------------------------------
-                # FORCE RECALCULATION
-                # ---------------------------------------------------
-
-                wb.calculation.fullCalcOnLoad = True
-                wb.calculation.forceFullCalc = True
-
-                # ---------------------------------------------------
-                # SAVE FILE
+                # SAVE OUTPUT
                 # ---------------------------------------------------
 
                 output = BytesIO()
@@ -331,81 +340,88 @@ if uploaded_file:
                 )
 
                 # ---------------------------------------------------
-                # ADVANCED PROFESSIONAL DASHBOARD
+                # DASHBOARD
                 # ---------------------------------------------------
 
                 st.markdown("---")
 
-                st.header("📊 Executive Solar Savings Dashboard")
+                st.header(
+                    "📊 Before Solar vs After Solar Dashboard"
+                )
 
                 # ---------------------------------------------------
-                # CALCULATIONS
+                # FETCH VALUES FROM OUTPUT SHEET
                 # ---------------------------------------------------
 
-                reference_units_value = float(
-                    clean_number(reference_units)
+                before_total_bill = safe_float(
+                    output_sheet,
+                    "C32"
                 )
 
-                solar_generation_value = float(
-                    current_month_generation
+                after_total_bill = safe_float(
+                    output_sheet,
+                    "D32"
                 )
 
-                before_energy_charges = (
-                    reference_units_value
-                    * energy_rate
+                monthly_savings = safe_float(
+                    output_sheet,
+                    "D35"
                 )
 
-                after_units = (
-                    reference_units_value
-                    - solar_generation_value
+                saving_percentage = safe_float(
+                    output_sheet,
+                    "D36"
                 )
 
-                if after_units < 0:
-
-                    after_units = 0
-
-                after_energy_charges = (
-                    after_units
-                    * energy_rate
+                before_demand = safe_float(
+                    output_sheet,
+                    "C15"
                 )
 
-                before_demand_charges = (
-                    float(clean_number(contract_demand))
-                    * demand_charge_rate
+                after_demand = safe_float(
+                    output_sheet,
+                    "D15"
                 )
 
-                after_demand_charges = (
-                    float(clean_number(
-                        highest_recorded_msedcl_demand
-                    ))
-                    * demand_charge_rate
+                before_wheeling = safe_float(
+                    output_sheet,
+                    "C16"
                 )
 
-                before_total_bill = (
-                    before_energy_charges
-                    + before_demand_charges
+                after_wheeling = safe_float(
+                    output_sheet,
+                    "D16"
                 )
 
-                after_total_bill = (
-                    after_energy_charges
-                    + after_demand_charges
-                    + float(debit_bill_adjustment)
-                    + float(grid_support_charges)
+                before_energy = safe_float(
+                    output_sheet,
+                    "C18"
                 )
 
-                monthly_savings = (
-                    before_total_bill
-                    - after_total_bill
+                after_energy = safe_float(
+                    output_sheet,
+                    "D18"
                 )
 
-                saving_percentage = 0
+                before_fac = safe_float(
+                    output_sheet,
+                    "C19"
+                )
 
-                if before_total_bill > 0:
+                after_fac = safe_float(
+                    output_sheet,
+                    "D19"
+                )
 
-                    saving_percentage = (
-                        monthly_savings
-                        / before_total_bill
-                    ) * 100
+                before_tax = safe_float(
+                    output_sheet,
+                    "C22"
+                )
+
+                after_tax = safe_float(
+                    output_sheet,
+                    "D22"
+                )
 
                 # ---------------------------------------------------
                 # KPI CARDS
@@ -430,7 +446,7 @@ if uploaded_file:
                 with k3:
 
                     st.metric(
-                        "💰 Monthly Savings",
+                        "💰 Total Savings",
                         f"₹ {monthly_savings:,.0f}"
                     )
 
@@ -449,7 +465,7 @@ if uploaded_file:
 
                 comparison_df = pd.DataFrame({
 
-                    "Category": [
+                    "Bill": [
                         "Before Solar",
                         "After Solar"
                     ],
@@ -463,10 +479,10 @@ if uploaded_file:
 
                 comparison_fig = px.bar(
                     comparison_df,
-                    x="Category",
+                    x="Bill",
                     y="Amount",
                     text="Amount",
-                    title="Before vs After Solar Bill Comparison"
+                    title="Before vs After Solar Bill"
                 )
 
                 comparison_fig.update_traces(
@@ -484,192 +500,107 @@ if uploaded_file:
                 )
 
                 # ---------------------------------------------------
-                # COST BREAKUP
+                # CHARGES COMPARISON
                 # ---------------------------------------------------
 
                 st.markdown("---")
 
-                st.subheader("💵 Cost Breakup Analysis")
+                st.subheader(
+                    "💵 Charges Comparison"
+                )
 
-                cost_df = pd.DataFrame({
+                charges_df = pd.DataFrame({
 
-                    "Charges": [
-                        "Energy Charges",
+                    "Particulars": [
+
                         "Demand Charges",
-                        "Debit Adjustment",
-                        "Grid Support"
+                        "Wheeling Charges",
+                        "Energy Charges",
+                        "FAC",
+                        "Tax"
+
                     ],
 
-                    "Amount": [
-                        after_energy_charges,
-                        after_demand_charges,
-                        float(debit_bill_adjustment),
-                        float(grid_support_charges)
+                    "Before Solar": [
+
+                        before_demand,
+                        before_wheeling,
+                        before_energy,
+                        before_fac,
+                        before_tax
+
+                    ],
+
+                    "After Solar": [
+
+                        after_demand,
+                        after_wheeling,
+                        after_energy,
+                        after_fac,
+                        after_tax
+
                     ]
 
                 })
 
-                cost_fig = px.pie(
-                    cost_df,
-                    names="Charges",
-                    values="Amount",
-                    title="After Solar Cost Distribution"
-                )
+                charges_fig = px.bar(
 
-                st.plotly_chart(
-                    cost_fig,
-                    use_container_width=True
-                )
+                    charges_df,
 
-                # ---------------------------------------------------
-                # WATERFALL CHART
-                # ---------------------------------------------------
+                    x="Particulars",
 
-                st.markdown("---")
-
-                st.subheader("📉 Savings Waterfall")
-
-                waterfall = go.Figure(go.Waterfall(
-
-                    name="Savings",
-
-                    orientation="v",
-
-                    measure=[
-                        "absolute",
-                        "relative",
-                        "relative",
-                        "total"
-                    ],
-
-                    x=[
+                    y=[
                         "Before Solar",
-                        "Solar Savings",
-                        "Additional Charges",
                         "After Solar"
                     ],
 
-                    textposition="outside",
+                    barmode="group",
 
-                    y=[
-                        before_total_bill,
-                        -monthly_savings,
-                        (
-                            float(debit_bill_adjustment)
-                            +
-                            float(grid_support_charges)
-                        ),
-                        after_total_bill
-                    ]
-
-                ))
-
-                waterfall.update_layout(
-                    title="Solar Savings Waterfall Analysis",
-                    height=500
+                    title="Charges Comparison"
                 )
 
                 st.plotly_chart(
-                    waterfall,
+                    charges_fig,
                     use_container_width=True
                 )
 
                 # ---------------------------------------------------
-                # TOD ZONE ANALYSIS
+                # SAVINGS DONUT CHART
                 # ---------------------------------------------------
 
                 st.markdown("---")
 
-                st.subheader("⚡ TOD Zone Analysis")
+                donut_df = pd.DataFrame({
 
-                zone_df = pd.DataFrame({
-
-                    "Zone": [
-                        "A Zone",
-                        "B Zone",
-                        "C Zone",
-                        "D Zone"
+                    "Category": [
+                        "Savings",
+                        "Remaining Bill"
                     ],
 
-                    "Units": [
-                        float(a_zone),
-                        float(b_zone),
-                        float(c_zone),
-                        float(d_zone)
+                    "Amount": [
+                        monthly_savings,
+                        after_total_bill
                     ]
 
                 })
 
-                zone_fig = px.bar(
-                    zone_df,
-                    x="Zone",
-                    y="Units",
-                    text="Units",
-                    title="TOD Zone Consumption"
-                )
+                donut_fig = px.pie(
 
-                zone_fig.update_traces(
-                    texttemplate='%{text:,.0f}',
-                    textposition='outside'
-                )
+                    donut_df,
 
-                zone_fig.update_layout(
-                    height=500
+                    names="Category",
+
+                    values="Amount",
+
+                    hole=0.5,
+
+                    title="Savings Distribution"
                 )
 
                 st.plotly_chart(
-                    zone_fig,
+                    donut_fig,
                     use_container_width=True
                 )
-
-                # ---------------------------------------------------
-                # ENERGY SUMMARY
-                # ---------------------------------------------------
-
-                st.markdown("---")
-
-                st.subheader("⚡ Energy Summary")
-
-                e1, e2, e3 = st.columns(3)
-
-                with e1:
-
-                    st.success(
-                        f"""
-                        ### Reference Consumption
-
-                        {reference_units_value:,.0f} kWh
-                        """
-                    )
-
-                with e2:
-
-                    st.success(
-                        f"""
-                        ### Solar Generation
-
-                        {solar_generation_value:,.0f} kWh
-                        """
-                    )
-
-                with e3:
-
-                    net_grid_units = (
-                        reference_units_value
-                        - solar_generation_value
-                    )
-
-                    if net_grid_units < 0:
-
-                        net_grid_units = 0
-
-                    st.success(
-                        f"""
-                        ### Net Grid Consumption
-
-                        {net_grid_units:,.0f} kWh
-                        """
-                    )
 
                 # ---------------------------------------------------
                 # DETAILED TABLE
@@ -678,52 +609,48 @@ if uploaded_file:
                 st.markdown("---")
 
                 st.subheader(
-                    "📋 Detailed Charges Comparison"
+                    "📋 Detailed Comparison Table"
                 )
 
-                charges_df = pd.DataFrame({
+                detailed_df = pd.DataFrame({
 
                     "Particulars": [
 
-                        "Energy Charges",
                         "Demand Charges",
-                        "Transmission Charges",
-                        "Debit Adjustment",
-                        "Grid Support Charges",
+                        "Wheeling Charges",
+                        "Energy Charges",
+                        "FAC",
+                        "Tax",
                         "Total Bill"
 
                     ],
 
                     "Before Solar": [
 
-                        round(before_energy_charges, 2),
-                        round(before_demand_charges, 2),
-                        round(float(clean_number(
-                            transmission_charges
-                        )), 2),
-                        0,
-                        0,
-                        round(before_total_bill, 2)
+                        before_demand,
+                        before_wheeling,
+                        before_energy,
+                        before_fac,
+                        before_tax,
+                        before_total_bill
 
                     ],
 
                     "After Solar": [
 
-                        round(after_energy_charges, 2),
-                        round(after_demand_charges, 2),
-                        round(float(clean_number(
-                            transmission_charges
-                        )), 2),
-                        round(float(debit_bill_adjustment), 2),
-                        round(float(grid_support_charges), 2),
-                        round(after_total_bill, 2)
+                        after_demand,
+                        after_wheeling,
+                        after_energy,
+                        after_fac,
+                        after_tax,
+                        after_total_bill
 
                     ]
 
                 })
 
                 st.dataframe(
-                    charges_df,
+                    detailed_df,
                     use_container_width=True
                 )
 
