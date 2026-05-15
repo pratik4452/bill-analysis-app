@@ -2,7 +2,6 @@ import streamlit as st
 import pdfplumber
 import re
 import os
-
 from openpyxl import load_workbook
 from io import BytesIO
 
@@ -99,11 +98,7 @@ def extract_value(pattern, text):
     )
 
     if match:
-
-        if match.groups():
-            return match.group(1)
-
-        return match.group(0)
+        return match.group(1)
 
     return ""
 
@@ -116,14 +111,14 @@ def clean_number(value):
     if value:
 
         return (
-            str(value)
+            value
             .replace(",", "")
             .replace("%", "")
             .replace("₹", "")
             .strip()
         )
 
-    return "0"
+    return ""
 
 # ---------------------------------------------------
 # MAIN PROCESS
@@ -151,183 +146,40 @@ if uploaded_file:
         st.success("✅ PDF Processed Successfully")
 
         # ---------------------------------------------------
-        # DEBUG PDF TEXT
+        # EXTRACT VALUES FROM BILL
         # ---------------------------------------------------
-
-        with st.expander("View Extracted PDF Text"):
-
-            st.text(text)
-
-        # ---------------------------------------------------
-        # EXTRACT VALUES
-        # ---------------------------------------------------
-
-        bill_month = extract_value(
-            r'Apr-\d+|May-\d+|Jun-\d+|Jul-\d+|Aug-\d+|Sep-\d+|Oct-\d+|Nov-\d+|Dec-\d+|Jan-\d+|Feb-\d+|Mar-\d+',
-            text
-        )
 
         contract_demand = extract_value(
-            r'Contract\s*Demand.*?([\d,]+)',
+            r'Total\s*Contract\s*Demand\s*\(KVA\)\s*([\d,\.]+)',
             text
         )
 
         highest_recorded_msedcl_demand = extract_value(
-            r'Highest\s*Recorded.*?Demand.*?([\d,]+)',
+            r'Highest\s*Recorded\s*MSEDCL\s*Demand\s*([\d,\.]+)',
             text
         )
 
         if not highest_recorded_msedcl_demand:
 
             highest_recorded_msedcl_demand = extract_value(
-                r'Maximum\s*Demand.*?([\d,]+)',
+                r'MSEDCL\s*Demand\s*([\d,\.]+)',
                 text
             )
 
         billed_demand = extract_value(
-            r'Billed\s*Demand.*?([\d,]+)',
+            r'Billed\s*Demand\s*([\d,\.]+)',
             text
         )
 
         reference_units = extract_value(
-            r'Ref.*?Consumption.*?([\d,]+)',
+            r'Ref\s*consumption\s*:?\s*([\d,\.]+)',
             text
         )
 
         transmission_charges = extract_value(
-            r'Transmission\s*Charges.*?([\d,]+\.\d+|[\d,]+)',
+            r'Transmission\s*Charges\s*:?\s*₹?\s*([\d,\.]+)',
             text
         )
-
-        # ---------------------------------------------------
-        # ENERGY CHARGES
-        # ---------------------------------------------------
-
-        energy_rate = extract_value(
-            r'Energy\s*Charges.*?([\d]+\.[\d]+)',
-            text
-        )
-
-        if not energy_rate:
-            energy_rate = "8.44"
-
-        # ---------------------------------------------------
-        # DEMAND CHARGES
-        # ---------------------------------------------------
-
-        demand_charge_rate = extract_value(
-            r'Demand\s*Charges.*?([\d,]+\.[\d]+|[\d,]+)',
-            text
-        )
-
-        if not demand_charge_rate:
-            demand_charge_rate = "650"
-
-        # ---------------------------------------------------
-        # WHEELING CHARGES
-        # ---------------------------------------------------
-
-        wheeling_charge_rate = extract_value(
-            r'Wheeling\s*Charges.*?([\d]+\.[\d]+)',
-            text
-        )
-
-        if not wheeling_charge_rate:
-            wheeling_charge_rate = "0.81"
-
-        # ---------------------------------------------------
-        # FAC
-        # ---------------------------------------------------
-
-        fac_rate = extract_value(
-            r'FAC.*?([\d]+\.[\d]+)',
-            text
-        )
-
-        if not fac_rate:
-            fac_rate = "0.50"
-
-        # ---------------------------------------------------
-        # TAX ON SALES
-        # ---------------------------------------------------
-
-        tax_rate = extract_value(
-            r'Tax\s*on\s*Sales.*?([\d]+\.[\d]+)',
-            text
-        )
-
-        if not tax_rate:
-
-            tax_rate = extract_value(
-                r'Tax.*?([\d]+\.[\d]+)',
-                text
-            )
-
-        if not tax_rate:
-            tax_rate = "0.29"
-
-        # ---------------------------------------------------
-        # POWER FACTOR EXTRACTION
-        # ---------------------------------------------------
-
-        power_factor = ""
-
-        pf_patterns = [
-
-            r'P\.?\s*F\.?\s*[:\-]?\s*([\d\.]+)',
-
-            r'PF\s*[:\-]?\s*([\d\.]+)',
-
-            r'Power\s*Factor\s*[:\-]?\s*([\d\.]+)',
-
-            r'Avg\.?\s*Power\s*Factor\s*[:\-]?\s*([\d\.]+)',
-
-            r'Average\s*Power\s*Factor\s*[:\-]?\s*([\d\.]+)',
-
-            r'Power\s*Factor\s*[:\-]?\s*([\d]+)',
-
-            r'PF\s*[:\-]?\s*([\d]+)',
-
-        ]
-
-        for pattern in pf_patterns:
-
-            match = re.search(
-                pattern,
-                text,
-                re.IGNORECASE
-            )
-
-            if match:
-
-                power_factor = match.group(1)
-
-                break
-
-        if power_factor:
-
-            power_factor = (
-                str(power_factor)
-                .replace("%", "")
-                .replace(",", "")
-                .strip()
-            )
-
-        if not power_factor:
-
-            power_factor = "1"
-
-        # ---------------------------------------------------
-        # ELECTRICITY DUTY
-        # ---------------------------------------------------
-
-        electricity_duty = extract_value(
-            r'Electricity\s*Duty.*?([\d]+\.[\d]+%)',
-            text
-        )
-
-        if not electricity_duty:
-            electricity_duty = "7.50%"
 
         # ---------------------------------------------------
         # DISPLAY DATA
@@ -339,50 +191,11 @@ if uploaded_file:
 
         with col3:
 
-            st.write("Month:", bill_month)
+            st.write("Contract Demand:", contract_demand)
 
             st.write(
-                "Contract Demand:",
-                contract_demand
-            )
-
-            st.write(
-                "Maximum Demand:",
+                "Highest Recorded MSEDCL Demand:",
                 highest_recorded_msedcl_demand
-            )
-
-            st.write(
-                "Energy Charges:",
-                energy_rate
-            )
-
-            st.write(
-                "Demand Charges:",
-                demand_charge_rate
-            )
-
-            st.write(
-                "Wheeling Charges:",
-                wheeling_charge_rate
-            )
-
-        with col4:
-
-            st.write("FAC:", fac_rate)
-
-            st.write(
-                "Tax on Sales:",
-                tax_rate
-            )
-
-            st.write(
-                "Power Factor:",
-                power_factor
-            )
-
-            st.write(
-                "Electricity Duty:",
-                electricity_duty
             )
 
             st.write(
@@ -390,12 +203,25 @@ if uploaded_file:
                 transmission_charges
             )
 
-            st.write(
-                "Reference Units:",
-                reference_units
-            )
+        with col4:
+
+            st.write("Billed Demand:", billed_demand)
+
+            st.write("Reference Units:", reference_units)
 
         st.markdown("---")
+
+        # ---------------------------------------------------
+        # STATIC VALUES
+        # ---------------------------------------------------
+
+        energy_rate = 8.44
+        demand_charge_rate = 650
+        wheeling_charge_rate = 0.81
+        fac_rate = 0.50
+        tax_rate = 0.29
+        power_factor = 1
+        electricity_duty = "7.50%"
 
         # ---------------------------------------------------
         # GENERATE EXCEL REPORT
@@ -405,6 +231,10 @@ if uploaded_file:
 
             try:
 
+                # ---------------------------------------------------
+                # LOAD TEMPLATE
+                # ---------------------------------------------------
+
                 template_path = os.path.join(
                     "templates",
                     "bill_template.xlsx"
@@ -412,117 +242,105 @@ if uploaded_file:
 
                 wb = load_workbook(template_path)
 
+                # ---------------------------------------------------
+                # SELECT SHEETS
+                # ---------------------------------------------------
+
                 input_sheet = wb[wb.sheetnames[0]]
 
-                if len(wb.sheetnames) > 1:
+                output_sheet_name = "Bill After Solar_Apr 26"
 
-                    output_sheet = wb[wb.sheetnames[1]]
+                if output_sheet_name in wb.sheetnames:
+
+                    output_sheet = wb[output_sheet_name]
 
                 else:
 
-                    output_sheet = input_sheet
+                    output_sheet = wb[wb.sheetnames[1]]
 
                 # ---------------------------------------------------
-                # INPUT SHEET VALUES
+                # FIXED VALUES
                 # ---------------------------------------------------
 
                 input_sheet["C2"] = solar_capacity
-
                 input_sheet["C3"] = plant_load
 
-                input_sheet["C9"] = float(
-                    clean_number(
-                        transmission_charges
-                    )
-                )
+                # ---------------------------------------------------
+                # TRANSMISSION CHARGES
+                # ---------------------------------------------------
 
-                input_sheet["C13"] = bill_month
-
-                input_sheet["C14"] = float(
-                    clean_number(
-                        contract_demand
-                    )
-                )
-
-                input_sheet["C15"] = float(
-                    clean_number(
-                        energy_rate
-                    )
-                )
-
-                input_sheet["C16"] = float(
-                    clean_number(
-                        demand_charge_rate
-                    )
-                )
-
-                input_sheet["C17"] = float(
-                    clean_number(
-                        wheeling_charge_rate
-                    )
-                )
-
-                input_sheet["C18"] = float(
-                    clean_number(
-                        fac_rate
-                    )
-                )
-
-                input_sheet["C19"] = float(
-                    clean_number(
-                        tax_rate
-                    )
+                input_sheet["C9"] = (
+                    float(clean_number(transmission_charges))
+                    if transmission_charges else 0
                 )
 
                 # ---------------------------------------------------
-                # POWER FACTOR TO C20
+                # BILL VALUES
                 # ---------------------------------------------------
 
-                input_sheet["C20"] = float(
-                    clean_number(
-                        power_factor
-                    )
+                input_sheet["C14"] = (
+                    float(clean_number(contract_demand))
+                    if contract_demand else 0
                 )
 
-                input_sheet["C21"] = float(
-                    clean_number(
+                input_sheet["C15"] = energy_rate
+                input_sheet["C16"] = demand_charge_rate
+                input_sheet["C17"] = wheeling_charge_rate
+                input_sheet["C18"] = fac_rate
+                input_sheet["C19"] = tax_rate
+                input_sheet["C20"] = power_factor
+
+                input_sheet["C21"] = (
+                    float(clean_number(
                         highest_recorded_msedcl_demand
-                    )
+                    ))
+                    if highest_recorded_msedcl_demand else 0
                 )
 
                 input_sheet["C22"] = electricity_duty
+
+                # ---------------------------------------------------
+                # MANUAL SOLAR GENERATION
+                # ---------------------------------------------------
 
                 input_sheet["H25"] = float(
                     current_month_generation
                 )
 
+                # ---------------------------------------------------
+                # MANUAL TOD ZONES
+                # ---------------------------------------------------
+
                 input_sheet["K26"] = float(a_zone)
-
                 input_sheet["L26"] = float(b_zone)
-
                 input_sheet["M26"] = float(c_zone)
-
                 input_sheet["N26"] = float(d_zone)
 
-                input_sheet["C30"] = float(
-                    clean_number(
-                        billed_demand
-                    )
+                # ---------------------------------------------------
+                # OTHER BILL VALUES
+                # ---------------------------------------------------
+
+                input_sheet["C30"] = (
+                    float(clean_number(billed_demand))
+                    if billed_demand else 0
                 )
 
-                input_sheet["C40"] = float(
-                    clean_number(
-                        reference_units
-                    )
+                input_sheet["C40"] = (
+                    float(clean_number(reference_units))
+                    if reference_units else 0
                 )
 
                 # ---------------------------------------------------
                 # OUTPUT SHEET VALUES
                 # ---------------------------------------------------
 
+                # C22 = Only Debit Bill Adjustment
+
                 output_sheet["C22"] = float(
                     debit_bill_adjustment
                 )
+
+                # D22 = Debit + Grid Support
 
                 output_sheet["D22"] = (
                     float(debit_bill_adjustment)
@@ -531,11 +349,10 @@ if uploaded_file:
                 )
 
                 # ---------------------------------------------------
-                # FORCE RECALCULATION
+                # FORCE FORMULA RECALCULATION
                 # ---------------------------------------------------
 
                 wb.calculation.fullCalcOnLoad = True
-
                 wb.calculation.forceFullCalc = True
 
                 # ---------------------------------------------------
@@ -549,8 +366,12 @@ if uploaded_file:
                 output.seek(0)
 
                 st.success(
-                    "✅ Report Generated Successfully"
+                    "✅ Before vs After Solar Report Generated Successfully"
                 )
+
+                # ---------------------------------------------------
+                # DOWNLOAD BUTTON
+                # ---------------------------------------------------
 
                 st.download_button(
                     label="⬇ Download Excel Report",
@@ -562,8 +383,7 @@ if uploaded_file:
             except Exception as excel_error:
 
                 st.error(
-                    f"Excel Generation Error: "
-                    f"{excel_error}"
+                    f"Excel Generation Error: {excel_error}"
                 )
 
     except Exception as e:
