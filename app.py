@@ -330,18 +330,14 @@ if uploaded_file:
                 )
 
                 # ---------------------------------------------------
-                # SHOW SECOND SHEET DATA DIRECTLY
+                # SHOW EXACT SECOND SHEET
                 # ---------------------------------------------------
 
                 st.markdown("---")
 
                 st.header(
-                    "📊 Output Sheet Preview"
+                    "📊 Before Solar vs After Solar Report"
                 )
-
-                # ---------------------------------------------------
-                # CONVERT SECOND SHEET TO DATAFRAME
-                # ---------------------------------------------------
 
                 data = output_sheet.values
 
@@ -349,14 +345,192 @@ if uploaded_file:
 
                 df = pd.DataFrame(data_list)
 
-                # ---------------------------------------------------
-                # DISPLAY SECOND SHEET
-                # ---------------------------------------------------
-
                 st.dataframe(
                     df,
                     use_container_width=True,
-                    height=800
+                    height=900
+                )
+
+                # ---------------------------------------------------
+                # SAFE FLOAT FUNCTION
+                # ---------------------------------------------------
+
+                def safe_float(cell):
+
+                    try:
+
+                        value = output_sheet[cell].value
+
+                        if value is None:
+                            return 0
+
+                        return float(
+                            str(value)
+                            .replace(",", "")
+                            .replace("₹", "")
+                        )
+
+                    except:
+
+                        return 0
+
+                # ---------------------------------------------------
+                # FETCH VALUES FROM SHEET
+                # ---------------------------------------------------
+
+                before_total_bill = safe_float("C30")
+
+                after_total_bill = safe_float("D30")
+
+                total_savings = safe_float("D35")
+
+                before_energy = safe_float("C12")
+
+                after_energy = safe_float("D12")
+
+                before_wheeling = safe_float("C11")
+
+                after_wheeling = safe_float("D11")
+
+                before_demand = safe_float("C10")
+
+                after_demand = safe_float("D10")
+
+                # ---------------------------------------------------
+                # KPI CARDS
+                # ---------------------------------------------------
+
+                st.markdown("---")
+
+                k1, k2, k3 = st.columns(3)
+
+                with k1:
+
+                    st.metric(
+                        "⚡ Before Solar Bill",
+                        f"₹ {before_total_bill:,.0f}"
+                    )
+
+                with k2:
+
+                    st.metric(
+                        "☀ After Solar Bill",
+                        f"₹ {after_total_bill:,.0f}"
+                    )
+
+                with k3:
+
+                    st.metric(
+                        "💰 Total Savings",
+                        f"₹ {total_savings:,.0f}"
+                    )
+
+                # ---------------------------------------------------
+                # BILL COMPARISON CHART
+                # ---------------------------------------------------
+
+                st.markdown("---")
+
+                comparison_df = pd.DataFrame({
+
+                    "Type": [
+                        "Before Solar",
+                        "After Solar"
+                    ],
+
+                    "Bill Amount": [
+                        before_total_bill,
+                        after_total_bill
+                    ]
+
+                })
+
+                st.subheader("📉 Bill Comparison")
+
+                st.bar_chart(
+                    comparison_df.set_index("Type")
+                )
+
+                # ---------------------------------------------------
+                # CHARGES COMPARISON
+                # ---------------------------------------------------
+
+                st.markdown("---")
+
+                charges_df = pd.DataFrame({
+
+                    "Charges": [
+
+                        "Demand Charges",
+                        "Wheeling Charges",
+                        "Energy Charges"
+
+                    ],
+
+                    "Before Solar": [
+
+                        before_demand,
+                        before_wheeling,
+                        before_energy
+
+                    ],
+
+                    "After Solar": [
+
+                        after_demand,
+                        after_wheeling,
+                        after_energy
+
+                    ]
+
+                })
+
+                st.subheader(
+                    "⚡ Charges Comparison"
+                )
+
+                st.bar_chart(
+                    charges_df.set_index("Charges")
+                )
+
+                # ---------------------------------------------------
+                # PIE CHART
+                # ---------------------------------------------------
+
+                st.markdown("---")
+
+                pie_df = pd.DataFrame({
+
+                    "Category": [
+                        "Savings",
+                        "After Solar Bill"
+                    ],
+
+                    "Value": [
+                        total_savings,
+                        after_total_bill
+                    ]
+
+                })
+
+                st.subheader(
+                    "💰 Savings Distribution"
+                )
+
+                st.plotly_chart(
+
+                    {
+                        "data": [
+                            {
+                                "labels": pie_df["Category"],
+                                "values": pie_df["Value"],
+                                "type": "pie",
+                                "hole": .4
+                            }
+                        ]
+                    },
+
+                    use_container_width=True
                 )
 
             except Exception as excel_error:
