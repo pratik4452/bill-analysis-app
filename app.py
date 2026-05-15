@@ -192,6 +192,60 @@ if uploaded_file:
         )
 
         # ---------------------------------------------------
+        # AUTO FETCH VALUES FROM PDF
+        # ---------------------------------------------------
+
+        energy_rate = extract_value(
+            r'Energy\s*Charges.*?([\d]+\.[\d]+)',
+            text
+        )
+
+        demand_charge_rate = extract_value(
+            r'Demand\s*Charges.*?([\d,]+\.[\d]+|[\d,]+)',
+            text
+        )
+
+        wheeling_charge_rate = extract_value(
+            r'Wheeling\s*Charges.*?([\d]+\.[\d]+)',
+            text
+        )
+
+        fac_rate = extract_value(
+            r'FAC.*?([\d]+\.[\d]+)',
+            text
+        )
+
+        tax_rate = extract_value(
+            r'Tax\s*on\s*Sales.*?([\d]+\.[\d]+)',
+            text
+        )
+
+        if not tax_rate:
+
+            tax_rate = extract_value(
+                r'Tax.*?([\d]+\.[\d]+)',
+                text
+            )
+
+        power_factor = extract_value(
+            r'Power\s*Factor.*?([\d]+\.[\d]+|[\d]+)',
+            text
+        )
+
+        if not power_factor:
+
+            power_factor = "1"
+
+        electricity_duty = extract_value(
+            r'Electricity\s*Duty.*?([\d]+\.[\d]+%)',
+            text
+        )
+
+        if not electricity_duty:
+
+            electricity_duty = "7.50%"
+
+        # ---------------------------------------------------
         # DISPLAY DATA
         # ---------------------------------------------------
 
@@ -213,16 +267,46 @@ if uploaded_file:
                 highest_recorded_msedcl_demand
             )
 
+            st.write(
+                "Energy Charges:",
+                energy_rate
+            )
+
+            st.write(
+                "Demand Charges:",
+                demand_charge_rate
+            )
+
+            st.write(
+                "Wheeling Charges:",
+                wheeling_charge_rate
+            )
+
         with col4:
+
+            st.write(
+                "FAC:",
+                fac_rate
+            )
+
+            st.write(
+                "Tax on Sales:",
+                tax_rate
+            )
+
+            st.write(
+                "Power Factor:",
+                power_factor
+            )
+
+            st.write(
+                "Electricity Duty:",
+                electricity_duty
+            )
 
             st.write(
                 "Transmission Charges:",
                 transmission_charges
-            )
-
-            st.write(
-                "Billed Demand:",
-                billed_demand
             )
 
             st.write(
@@ -231,18 +315,6 @@ if uploaded_file:
             )
 
         st.markdown("---")
-
-        # ---------------------------------------------------
-        # STATIC VALUES
-        # ---------------------------------------------------
-
-        energy_rate = 8.44
-        demand_charge_rate = 650
-        wheeling_charge_rate = 0.81
-        fac_rate = 0.50
-        tax_rate = 0.29
-        power_factor = 1
-        electricity_duty = "7.50%"
 
         # ---------------------------------------------------
         # GENERATE EXCEL REPORT
@@ -313,17 +385,29 @@ if uploaded_file:
                     if contract_demand else 0
                 )
 
-                input_sheet["C15"] = energy_rate
+                input_sheet["C15"] = float(
+                    clean_number(energy_rate)
+                )
 
-                input_sheet["C16"] = demand_charge_rate
+                input_sheet["C16"] = float(
+                    clean_number(demand_charge_rate)
+                )
 
-                input_sheet["C17"] = wheeling_charge_rate
+                input_sheet["C17"] = float(
+                    clean_number(wheeling_charge_rate)
+                )
 
-                input_sheet["C18"] = fac_rate
+                input_sheet["C18"] = float(
+                    clean_number(fac_rate)
+                )
 
-                input_sheet["C19"] = tax_rate
+                input_sheet["C19"] = float(
+                    clean_number(tax_rate)
+                )
 
-                input_sheet["C20"] = power_factor
+                input_sheet["C20"] = float(
+                    clean_number(power_factor)
+                )
 
                 input_sheet["C21"] = (
                     float(clean_number(
