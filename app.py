@@ -111,14 +111,14 @@ def clean_number(value):
     if value:
 
         return (
-            value
+            str(value)
             .replace(",", "")
             .replace("%", "")
             .replace("₹", "")
             .strip()
         )
 
-    return ""
+    return "0"
 
 # ---------------------------------------------------
 # MAIN PROCESS
@@ -149,10 +149,21 @@ if uploaded_file:
         # EXTRACT VALUES FROM BILL
         # ---------------------------------------------------
 
+        # Month
+
+        bill_month = extract_value(
+            r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\-\s]?\d{2}',
+            text
+        )
+
+        # Contract Demand
+
         contract_demand = extract_value(
             r'Total\s*Contract\s*Demand\s*\(KVA\)\s*([\d,\.]+)',
             text
         )
+
+        # Maximum Demand
 
         highest_recorded_msedcl_demand = extract_value(
             r'Highest\s*Recorded\s*MSEDCL\s*Demand\s*([\d,\.]+)',
@@ -166,20 +177,87 @@ if uploaded_file:
                 text
             )
 
+        # Transmission Charges
+
+        transmission_charges = extract_value(
+            r'Transmission\s*Charges\s*:?\s*₹?\s*([\d,\.]+)',
+            text
+        )
+
+        # Billed Demand
+
         billed_demand = extract_value(
             r'Billed\s*Demand\s*([\d,\.]+)',
             text
         )
+
+        # Reference Units
 
         reference_units = extract_value(
             r'Ref\s*consumption\s*:?\s*([\d,\.]+)',
             text
         )
 
-        transmission_charges = extract_value(
-            r'Transmission\s*Charges\s*:?\s*₹?\s*([\d,\.]+)',
+        # ---------------------------------------------------
+        # POWER FACTOR EXTRACTION
+        # ---------------------------------------------------
+
+        power_factor = ""
+
+        pf_patterns = [
+
+            r'P\.?\s*F\.?\s*[:\-]?\s*([\d\.]+)',
+
+            r'PF\s*[:\-]?\s*([\d\.]+)',
+
+            r'Power\s*Factor\s*[:\-]?\s*([\d\.]+)',
+
+            r'Avg\.?\s*Power\s*Factor\s*[:\-]?\s*([\d\.]+)',
+
+            r'Average\s*Power\s*Factor\s*[:\-]?\s*([\d\.]+)'
+
+        ]
+
+        for pattern in pf_patterns:
+
+            match = re.search(
+                pattern,
+                text,
+                re.IGNORECASE
+            )
+
+            if match:
+
+                power_factor = match.group(1)
+
+                break
+
+        if not power_factor:
+
+            power_factor = "1"
+
+        # ---------------------------------------------------
+        # ELECTRICITY DUTY EXTRACTION
+        # ---------------------------------------------------
+
+        electricity_duty = extract_value(
+            r'Electricity\s*Duty\s*[:\-]?\s*([\d\.]+%)',
             text
         )
+
+        if not electricity_duty:
+
+            electricity_duty = "7.50%"
+
+        # ---------------------------------------------------
+        # STATIC VALUES
+        # ---------------------------------------------------
+
+        energy_rate = 8.44
+        demand_charge_rate = 650
+        wheeling_charge_rate = 0.81
+        fac_rate = 0.50
+        tax_rate = 0.29
 
         # ---------------------------------------------------
         # DISPLAY DATA
@@ -191,10 +269,15 @@ if uploaded_file:
 
         with col3:
 
-            st.write("Contract Demand:", contract_demand)
+            st.write("Month:", bill_month)
 
             st.write(
-                "Highest Recorded MSEDCL Demand:",
+                "Contract Demand:",
+                contract_demand
+            )
+
+            st.write(
+                "Maximum Demand:",
                 highest_recorded_msedcl_demand
             )
 
@@ -205,23 +288,27 @@ if uploaded_file:
 
         with col4:
 
-            st.write("Billed Demand:", billed_demand)
+            st.write(
+                "Power Factor:",
+                power_factor
+            )
 
-            st.write("Reference Units:", reference_units)
+            st.write(
+                "Electricity Duty:",
+                electricity_duty
+            )
+
+            st.write(
+                "Billed Demand:",
+                billed_demand
+            )
+
+            st.write(
+                "Reference Units:",
+                reference_units
+            )
 
         st.markdown("---")
-
-        # ---------------------------------------------------
-        # STATIC VALUES
-        # ---------------------------------------------------
-
-        energy_rate = 8.44
-        demand_charge_rate = 650
-        wheeling_charge_rate = 0.81
-        fac_rate = 0.50
-        tax_rate = 0.29
-        power_factor = 1
-        electricity_duty = "7.50%"
 
         # ---------------------------------------------------
         # GENERATE EXCEL REPORT
@@ -248,15 +335,13 @@ if uploaded_file:
 
                 input_sheet = wb[wb.sheetnames[0]]
 
-                output_sheet_name = "Bill After Solar_Apr 26"
+                if len(wb.sheetnames) > 1:
 
-                if output_sheet_name in wb.sheetnames:
-
-                    output_sheet = wb[output_sheet_name]
+                    output_sheet = wb[wb.sheetnames[1]]
 
                 else:
 
-                    output_sheet = wb[wb.sheetnames[1]]
+                    output_sheet = input_sheet
 
                 # ---------------------------------------------------
                 # FIXED VALUES
@@ -278,6 +363,8 @@ if uploaded_file:
                 # BILL VALUES
                 # ---------------------------------------------------
 
+                input_sheet["C13"] = bill_month
+
                 input_sheet["C14"] = (
                     float(clean_number(contract_demand))
                     if contract_demand else 0
@@ -288,7 +375,19 @@ if uploaded_file:
                 input_sheet["C17"] = wheeling_charge_rate
                 input_sheet["C18"] = fac_rate
                 input_sheet["C19"] = tax_rate
-                input_sheet["C20"] = power_factor
+
+                # ---------------------------------------------------
+                # POWER FACTOR FROM PDF
+                # ---------------------------------------------------
+
+                input_sheet["C20"] = (
+                    float(clean_number(power_factor))
+                    if power_factor else 1
+                )
+
+                # ---------------------------------------------------
+                # MAXIMUM DEMAND
+                # ---------------------------------------------------
 
                 input_sheet["C21"] = (
                     float(clean_number(
@@ -297,10 +396,14 @@ if uploaded_file:
                     if highest_recorded_msedcl_demand else 0
                 )
 
+                # ---------------------------------------------------
+                # ELECTRICITY DUTY FROM PDF
+                # ---------------------------------------------------
+
                 input_sheet["C22"] = electricity_duty
 
                 # ---------------------------------------------------
-                # MANUAL SOLAR GENERATION
+                # SOLAR GENERATION
                 # ---------------------------------------------------
 
                 input_sheet["H25"] = float(
@@ -308,7 +411,7 @@ if uploaded_file:
                 )
 
                 # ---------------------------------------------------
-                # MANUAL TOD ZONES
+                # TOD ZONES
                 # ---------------------------------------------------
 
                 input_sheet["K26"] = float(a_zone)
@@ -334,13 +437,9 @@ if uploaded_file:
                 # OUTPUT SHEET VALUES
                 # ---------------------------------------------------
 
-                # C22 = Only Debit Bill Adjustment
-
                 output_sheet["C22"] = float(
                     debit_bill_adjustment
                 )
-
-                # D22 = Debit + Grid Support
 
                 output_sheet["D22"] = (
                     float(debit_bill_adjustment)
