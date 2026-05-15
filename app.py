@@ -27,6 +27,14 @@ st.subheader("Before Solar vs After Solar Analysis")
 solar_capacity = 1000
 plant_load = 1800
 
+energy_rate = 8.44
+demand_charge_rate = 650
+wheeling_charge_rate = 0.81
+fac_rate = 0.50
+tax_rate = 0.29
+power_factor = 1
+electricity_duty = "7.50%"
+
 # ---------------------------------------------------
 # MANUAL INPUTS
 # ---------------------------------------------------
@@ -234,11 +242,7 @@ if uploaded_file:
                     sheet_names
                 )
 
-                # INPUT SHEET
-
                 input_sheet = wb[sheet_names[0]]
-
-                # OUTPUT SHEET
 
                 if len(sheet_names) > 1:
 
@@ -263,12 +267,12 @@ if uploaded_file:
                     clean_number(contract_demand)
                 )
 
-                input_sheet["C15"] = 8.44
-                input_sheet["C16"] = 650
-                input_sheet["C17"] = 0.81
-                input_sheet["C18"] = 0.50
-                input_sheet["C19"] = 0.29
-                input_sheet["C20"] = 1
+                input_sheet["C15"] = energy_rate
+                input_sheet["C16"] = demand_charge_rate
+                input_sheet["C17"] = wheeling_charge_rate
+                input_sheet["C18"] = fac_rate
+                input_sheet["C19"] = tax_rate
+                input_sheet["C20"] = power_factor
 
                 input_sheet["C21"] = float(
                     clean_number(
@@ -276,7 +280,7 @@ if uploaded_file:
                     )
                 )
 
-                input_sheet["C22"] = "7.50%"
+                input_sheet["C22"] = electricity_duty
 
                 input_sheet["H25"] = float(
                     current_month_generation
@@ -331,44 +335,46 @@ if uploaded_file:
                 )
 
                 # ---------------------------------------------------
-                # DASHBOARD
+                # PROFESSIONAL DASHBOARD
                 # ---------------------------------------------------
 
                 st.markdown("---")
 
-                st.header(
-                    "📊 Solar Savings Dashboard"
-                )
+                st.header("📊 Solar Savings Dashboard")
 
                 # ---------------------------------------------------
-                # GET BILL VALUES
+                # CALCULATIONS
                 # ---------------------------------------------------
+
+                reference_units_value = float(
+                    clean_number(reference_units)
+                )
+
+                solar_generation_value = float(
+                    current_month_generation
+                )
 
                 before_solar_bill = (
-                    output_sheet["C32"].value
+                    reference_units_value
+                    *
+                    energy_rate
                 )
+
+                after_solar_units = (
+                    reference_units_value
+                    -
+                    solar_generation_value
+                )
+
+                if after_solar_units < 0:
+
+                    after_solar_units = 0
 
                 after_solar_bill = (
-                    output_sheet["D32"].value
+                    after_solar_units
+                    *
+                    energy_rate
                 )
-
-                try:
-
-                    before_solar_bill = float(
-                        before_solar_bill
-                    )
-
-                except:
-                    before_solar_bill = 0
-
-                try:
-
-                    after_solar_bill = float(
-                        after_solar_bill
-                    )
-
-                except:
-                    after_solar_bill = 0
 
                 monthly_savings = (
                     before_solar_bill
@@ -376,11 +382,11 @@ if uploaded_file:
                     after_solar_bill
                 )
 
-                savings_percentage = 0
+                saving_percentage = 0
 
                 if before_solar_bill > 0:
 
-                    savings_percentage = (
+                    saving_percentage = (
                         monthly_savings
                         /
                         before_solar_bill
@@ -390,29 +396,47 @@ if uploaded_file:
                 # KPI CARDS
                 # ---------------------------------------------------
 
-                k1, k2, k3 = st.columns(3)
+                k1, k2, k3, k4 = st.columns(4)
 
                 with k1:
+
+                    st.metric(
+                        "⚡ Reference Units",
+                        f"{reference_units_value:,.0f} kWh"
+                    )
+
+                with k2:
+
+                    st.metric(
+                        "☀ Solar Generation",
+                        f"{solar_generation_value:,.0f} kWh"
+                    )
+
+                with k3:
 
                     st.metric(
                         "💡 Before Solar Bill",
                         f"₹ {before_solar_bill:,.0f}"
                     )
 
-                with k2:
+                with k4:
 
                     st.metric(
                         "⚡ After Solar Bill",
                         f"₹ {after_solar_bill:,.0f}"
                     )
 
-                with k3:
+                # ---------------------------------------------------
+                # SAVINGS SUMMARY
+                # ---------------------------------------------------
 
-                    st.metric(
-                        "💰 Monthly Savings",
-                        f"₹ {monthly_savings:,.0f}",
-                        f"{savings_percentage:.1f}%"
-                    )
+                st.success(
+                    f"""
+                    💰 Monthly Savings: ₹ {monthly_savings:,.0f}
+
+                    📉 Savings Percentage: {saving_percentage:.1f}%
+                    """
+                )
 
                 st.markdown("---")
 
@@ -439,12 +463,16 @@ if uploaded_file:
                     x="Bill Type",
                     y="Amount",
                     text="Amount",
-                    title="Before vs After Solar Bill"
+                    title="Before vs After Solar Bill Comparison"
                 )
 
                 fig.update_traces(
                     texttemplate='₹ %{text:,.0f}',
                     textposition='outside'
+                )
+
+                fig.update_layout(
+                    height=500
                 )
 
                 st.plotly_chart(
@@ -460,7 +488,7 @@ if uploaded_file:
 
                     "Category": [
                         "Savings",
-                        "After Solar Bill"
+                        "Remaining Bill"
                     ],
 
                     "Value": [
@@ -483,6 +511,46 @@ if uploaded_file:
                 )
 
                 # ---------------------------------------------------
+                # TOD ZONE CHART
+                # ---------------------------------------------------
+
+                zone_df = pd.DataFrame({
+
+                    "Zone": [
+                        "A Zone",
+                        "B Zone",
+                        "C Zone",
+                        "D Zone"
+                    ],
+
+                    "Units": [
+                        float(a_zone),
+                        float(b_zone),
+                        float(c_zone),
+                        float(d_zone)
+                    ]
+
+                })
+
+                zone_fig = px.bar(
+                    zone_df,
+                    x="Zone",
+                    y="Units",
+                    text="Units",
+                    title="TOD Zone Consumption"
+                )
+
+                zone_fig.update_traces(
+                    texttemplate='%{text:,.0f}',
+                    textposition='outside'
+                )
+
+                st.plotly_chart(
+                    zone_fig,
+                    use_container_width=True
+                )
+
+                # ---------------------------------------------------
                 # ENERGY SUMMARY
                 # ---------------------------------------------------
 
@@ -496,21 +564,21 @@ if uploaded_file:
 
                 with e1:
 
-                    st.success(
+                    st.info(
                         f"""
-                        ### Solar Generation
+                        ### Reference Units
 
-                        {current_month_generation:,.0f} kWh
+                        {reference_units_value:,.0f} kWh
                         """
                     )
 
                 with e2:
 
-                    st.success(
+                    st.info(
                         f"""
-                        ### Reference Units
+                        ### Solar Generation
 
-                        {float(clean_number(reference_units)):,.0f} kWh
+                        {solar_generation_value:,.0f} kWh
                         """
                     )
 
@@ -526,11 +594,51 @@ if uploaded_file:
                         float(d_zone)
                     )
 
-                    st.success(
+                    st.info(
                         f"""
                         ### TOD Units
 
                         {total_zone_units:,.0f} kWh
+                        """
+                    )
+
+                # ---------------------------------------------------
+                # CHARGES SUMMARY
+                # ---------------------------------------------------
+
+                st.markdown("---")
+
+                st.subheader("💵 Charges Summary")
+
+                ch1, ch2, ch3 = st.columns(3)
+
+                with ch1:
+
+                    st.warning(
+                        f"""
+                        ### Transmission Charges
+
+                        ₹ {float(clean_number(transmission_charges)):,.2f}
+                        """
+                    )
+
+                with ch2:
+
+                    st.warning(
+                        f"""
+                        ### Debit Bill Adjustment
+
+                        ₹ {debit_bill_adjustment:,.2f}
+                        """
+                    )
+
+                with ch3:
+
+                    st.warning(
+                        f"""
+                        ### Grid Support Charges
+
+                        ₹ {grid_support_charges:,.2f}
                         """
                     )
 
