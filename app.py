@@ -223,9 +223,30 @@ if uploaded_file:
 
                 wb = load_workbook(template_path)
 
-                input_sheet = wb[wb.sheetnames[0]]
+                # ---------------------------------------------------
+                # AUTO SELECT SHEETS
+                # ---------------------------------------------------
 
-                output_sheet = wb["Bill After Solar_Apr 26"]
+                sheet_names = wb.sheetnames
+
+                st.write(
+                    "Available Sheets:",
+                    sheet_names
+                )
+
+                # INPUT SHEET
+
+                input_sheet = wb[sheet_names[0]]
+
+                # OUTPUT SHEET
+
+                if len(sheet_names) > 1:
+
+                    output_sheet = wb[sheet_names[1]]
+
+                else:
+
+                    output_sheet = wb[sheet_names[0]]
 
                 # ---------------------------------------------------
                 # INPUT VALUES
@@ -275,7 +296,7 @@ if uploaded_file:
                 )
 
                 # ---------------------------------------------------
-                # OUTPUT SHEET VALUES
+                # OUTPUT VALUES
                 # ---------------------------------------------------
 
                 output_sheet["C22"] = float(
@@ -318,6 +339,10 @@ if uploaded_file:
                 st.header(
                     "📊 Solar Savings Dashboard"
                 )
+
+                # ---------------------------------------------------
+                # GET BILL VALUES
+                # ---------------------------------------------------
 
                 before_solar_bill = (
                     output_sheet["C32"].value
@@ -456,6 +481,58 @@ if uploaded_file:
                     pie_fig,
                     use_container_width=True
                 )
+
+                # ---------------------------------------------------
+                # ENERGY SUMMARY
+                # ---------------------------------------------------
+
+                st.markdown("---")
+
+                st.subheader(
+                    "⚡ Energy Summary"
+                )
+
+                e1, e2, e3 = st.columns(3)
+
+                with e1:
+
+                    st.success(
+                        f"""
+                        ### Solar Generation
+
+                        {current_month_generation:,.0f} kWh
+                        """
+                    )
+
+                with e2:
+
+                    st.success(
+                        f"""
+                        ### Reference Units
+
+                        {float(clean_number(reference_units)):,.0f} kWh
+                        """
+                    )
+
+                with e3:
+
+                    total_zone_units = (
+                        float(a_zone)
+                        +
+                        float(b_zone)
+                        +
+                        float(c_zone)
+                        +
+                        float(d_zone)
+                    )
+
+                    st.success(
+                        f"""
+                        ### TOD Units
+
+                        {total_zone_units:,.0f} kWh
+                        """
+                    )
 
                 # ---------------------------------------------------
                 # DOWNLOAD BUTTON
