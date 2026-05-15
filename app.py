@@ -3,7 +3,7 @@ import pdfplumber
 import re
 import os
 import pandas as pd
-import plotly.express as px
+
 from openpyxl import load_workbook
 from io import BytesIO
 
@@ -126,24 +126,6 @@ def clean_number(value):
 
     return "0"
 
-def safe_float(sheet, cell):
-
-    try:
-
-        value = sheet[cell].value
-
-        if value is None:
-            return 0
-
-        return float(
-            str(value)
-            .replace(",", "")
-        )
-
-    except:
-
-        return 0
-
 # ---------------------------------------------------
 # MAIN PROCESS
 # ---------------------------------------------------
@@ -249,20 +231,14 @@ if uploaded_file:
                 wb = load_workbook(template_path)
 
                 # ---------------------------------------------------
-                # AUTO SELECT SHEETS
+                # SHEETS
                 # ---------------------------------------------------
 
                 sheet_names = wb.sheetnames
 
                 input_sheet = wb[sheet_names[0]]
 
-                if len(sheet_names) > 1:
-
-                    output_sheet = wb[sheet_names[1]]
-
-                else:
-
-                    output_sheet = wb[sheet_names[0]]
+                output_sheet = wb[sheet_names[1]]
 
                 # ---------------------------------------------------
                 # INPUT VALUES
@@ -340,321 +316,6 @@ if uploaded_file:
                 )
 
                 # ---------------------------------------------------
-                # DASHBOARD
-                # ---------------------------------------------------
-
-                st.markdown("---")
-
-                st.header(
-                    "📊 Before Solar vs After Solar Dashboard"
-                )
-
-                # ---------------------------------------------------
-                # FETCH VALUES FROM OUTPUT SHEET
-                # ---------------------------------------------------
-
-                before_total_bill = safe_float(
-                    output_sheet,
-                    "C32"
-                )
-
-                after_total_bill = safe_float(
-                    output_sheet,
-                    "D32"
-                )
-
-                monthly_savings = safe_float(
-                    output_sheet,
-                    "D35"
-                )
-
-                saving_percentage = safe_float(
-                    output_sheet,
-                    "D36"
-                )
-
-                before_demand = safe_float(
-                    output_sheet,
-                    "C15"
-                )
-
-                after_demand = safe_float(
-                    output_sheet,
-                    "D15"
-                )
-
-                before_wheeling = safe_float(
-                    output_sheet,
-                    "C16"
-                )
-
-                after_wheeling = safe_float(
-                    output_sheet,
-                    "D16"
-                )
-
-                before_energy = safe_float(
-                    output_sheet,
-                    "C18"
-                )
-
-                after_energy = safe_float(
-                    output_sheet,
-                    "D18"
-                )
-
-                before_fac = safe_float(
-                    output_sheet,
-                    "C19"
-                )
-
-                after_fac = safe_float(
-                    output_sheet,
-                    "D19"
-                )
-
-                before_tax = safe_float(
-                    output_sheet,
-                    "C22"
-                )
-
-                after_tax = safe_float(
-                    output_sheet,
-                    "D22"
-                )
-
-                # ---------------------------------------------------
-                # KPI CARDS
-                # ---------------------------------------------------
-
-                k1, k2, k3, k4 = st.columns(4)
-
-                with k1:
-
-                    st.metric(
-                        "⚡ Before Solar Bill",
-                        f"₹ {before_total_bill:,.0f}"
-                    )
-
-                with k2:
-
-                    st.metric(
-                        "☀ After Solar Bill",
-                        f"₹ {after_total_bill:,.0f}"
-                    )
-
-                with k3:
-
-                    st.metric(
-                        "💰 Total Savings",
-                        f"₹ {monthly_savings:,.0f}"
-                    )
-
-                with k4:
-
-                    st.metric(
-                        "📉 Savings %",
-                        f"{saving_percentage:.1f}%"
-                    )
-
-                st.markdown("---")
-
-                # ---------------------------------------------------
-                # BILL COMPARISON CHART
-                # ---------------------------------------------------
-
-                comparison_df = pd.DataFrame({
-
-                    "Bill": [
-                        "Before Solar",
-                        "After Solar"
-                    ],
-
-                    "Amount": [
-                        before_total_bill,
-                        after_total_bill
-                    ]
-
-                })
-
-                comparison_fig = px.bar(
-                    comparison_df,
-                    x="Bill",
-                    y="Amount",
-                    text="Amount",
-                    title="Before vs After Solar Bill"
-                )
-
-                comparison_fig.update_traces(
-                    texttemplate='₹ %{text:,.0f}',
-                    textposition='outside'
-                )
-
-                comparison_fig.update_layout(
-                    height=500
-                )
-
-                st.plotly_chart(
-                    comparison_fig,
-                    use_container_width=True
-                )
-
-                # ---------------------------------------------------
-                # CHARGES COMPARISON
-                # ---------------------------------------------------
-
-                st.markdown("---")
-
-                st.subheader(
-                    "💵 Charges Comparison"
-                )
-
-                charges_df = pd.DataFrame({
-
-                    "Particulars": [
-
-                        "Demand Charges",
-                        "Wheeling Charges",
-                        "Energy Charges",
-                        "FAC",
-                        "Tax"
-
-                    ],
-
-                    "Before Solar": [
-
-                        before_demand,
-                        before_wheeling,
-                        before_energy,
-                        before_fac,
-                        before_tax
-
-                    ],
-
-                    "After Solar": [
-
-                        after_demand,
-                        after_wheeling,
-                        after_energy,
-                        after_fac,
-                        after_tax
-
-                    ]
-
-                })
-
-                charges_fig = px.bar(
-
-                    charges_df,
-
-                    x="Particulars",
-
-                    y=[
-                        "Before Solar",
-                        "After Solar"
-                    ],
-
-                    barmode="group",
-
-                    title="Charges Comparison"
-                )
-
-                st.plotly_chart(
-                    charges_fig,
-                    use_container_width=True
-                )
-
-                # ---------------------------------------------------
-                # SAVINGS DONUT CHART
-                # ---------------------------------------------------
-
-                st.markdown("---")
-
-                donut_df = pd.DataFrame({
-
-                    "Category": [
-                        "Savings",
-                        "Remaining Bill"
-                    ],
-
-                    "Amount": [
-                        monthly_savings,
-                        after_total_bill
-                    ]
-
-                })
-
-                donut_fig = px.pie(
-
-                    donut_df,
-
-                    names="Category",
-
-                    values="Amount",
-
-                    hole=0.5,
-
-                    title="Savings Distribution"
-                )
-
-                st.plotly_chart(
-                    donut_fig,
-                    use_container_width=True
-                )
-
-                # ---------------------------------------------------
-                # DETAILED TABLE
-                # ---------------------------------------------------
-
-                st.markdown("---")
-
-                st.subheader(
-                    "📋 Detailed Comparison Table"
-                )
-
-                detailed_df = pd.DataFrame({
-
-                    "Particulars": [
-
-                        "Demand Charges",
-                        "Wheeling Charges",
-                        "Energy Charges",
-                        "FAC",
-                        "Tax",
-                        "Total Bill"
-
-                    ],
-
-                    "Before Solar": [
-
-                        before_demand,
-                        before_wheeling,
-                        before_energy,
-                        before_fac,
-                        before_tax,
-                        before_total_bill
-
-                    ],
-
-                    "After Solar": [
-
-                        after_demand,
-                        after_wheeling,
-                        after_energy,
-                        after_fac,
-                        after_tax,
-                        after_total_bill
-
-                    ]
-
-                })
-
-                st.dataframe(
-                    detailed_df,
-                    use_container_width=True
-                )
-
-                # ---------------------------------------------------
                 # DOWNLOAD BUTTON
                 # ---------------------------------------------------
 
@@ -666,6 +327,36 @@ if uploaded_file:
                         "application/vnd.openxmlformats-"
                         "officedocument.spreadsheetml.sheet"
                     )
+                )
+
+                # ---------------------------------------------------
+                # SHOW SECOND SHEET DATA DIRECTLY
+                # ---------------------------------------------------
+
+                st.markdown("---")
+
+                st.header(
+                    "📊 Output Sheet Preview"
+                )
+
+                # ---------------------------------------------------
+                # CONVERT SECOND SHEET TO DATAFRAME
+                # ---------------------------------------------------
+
+                data = output_sheet.values
+
+                data_list = list(data)
+
+                df = pd.DataFrame(data_list)
+
+                # ---------------------------------------------------
+                # DISPLAY SECOND SHEET
+                # ---------------------------------------------------
+
+                st.dataframe(
+                    df,
+                    use_container_width=True,
+                    height=800
                 )
 
             except Exception as excel_error:
