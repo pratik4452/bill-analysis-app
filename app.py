@@ -2,6 +2,9 @@ import streamlit as st
 import pdfplumber
 import re
 import os
+import pandas as pd
+import plotly.express as px
+
 from openpyxl import load_workbook
 from io import BytesIO
 
@@ -10,11 +13,11 @@ from io import BytesIO
 # ---------------------------------------------------
 
 st.set_page_config(
-    page_title="DISCOM Bill Analysis",
+    page_title="DISCOM Bill Analysis Dashboard",
     layout="wide"
 )
 
-st.title("⚡ DISCOM Bill Analysis App")
+st.title("⚡ DISCOM Bill Analysis Dashboard")
 st.subheader("Before Solar vs After Solar Analysis")
 
 # ---------------------------------------------------
@@ -86,7 +89,7 @@ uploaded_file = st.file_uploader(
 )
 
 # ---------------------------------------------------
-# HELPER FUNCTION
+# HELPER FUNCTIONS
 # ---------------------------------------------------
 
 def extract_value(pattern, text):
@@ -102,23 +105,19 @@ def extract_value(pattern, text):
 
     return ""
 
-# ---------------------------------------------------
-# CLEAN NUMBER FUNCTION
-# ---------------------------------------------------
-
 def clean_number(value):
 
     if value:
 
         return (
-            value
+            str(value)
             .replace(",", "")
             .replace("%", "")
             .replace("₹", "")
             .strip()
         )
 
-    return ""
+    return "0"
 
 # ---------------------------------------------------
 # MAIN PROCESS
@@ -146,7 +145,7 @@ if uploaded_file:
         st.success("✅ PDF Processed Successfully")
 
         # ---------------------------------------------------
-        # EXTRACT VALUES FROM BILL
+        # EXTRACT VALUES
         # ---------------------------------------------------
 
         contract_demand = extract_value(
@@ -158,13 +157,6 @@ if uploaded_file:
             r'Highest\s*Recorded\s*MSEDCL\s*Demand\s*([\d,\.]+)',
             text
         )
-
-        if not highest_recorded_msedcl_demand:
-
-            highest_recorded_msedcl_demand = extract_value(
-                r'MSEDCL\s*Demand\s*([\d,\.]+)',
-                text
-            )
 
         billed_demand = extract_value(
             r'Billed\s*Demand\s*([\d,\.]+)',
@@ -182,49 +174,38 @@ if uploaded_file:
         )
 
         # ---------------------------------------------------
-        # DISPLAY DATA
+        # DISPLAY EXTRACTED DATA
         # ---------------------------------------------------
 
         st.markdown("## 📋 Extracted Bill Data")
 
-        col3, col4 = st.columns(2)
+        c1, c2 = st.columns(2)
 
-        with col3:
+        with c1:
 
-            st.write("Contract Demand:", contract_demand)
-
-            st.write(
-                "Highest Recorded MSEDCL Demand:",
-                highest_recorded_msedcl_demand
+            st.info(
+                f"Contract Demand: {contract_demand}"
             )
 
-            st.write(
-                "Transmission Charges:",
-                transmission_charges
+            st.info(
+                f"Highest Recorded MSEDCL Demand: "
+                f"{highest_recorded_msedcl_demand}"
             )
 
-        with col4:
+        with c2:
 
-            st.write("Billed Demand:", billed_demand)
+            st.info(
+                f"Transmission Charges: ₹ "
+                f"{transmission_charges}"
+            )
 
-            st.write("Reference Units:", reference_units)
-
-        st.markdown("---")
-
-        # ---------------------------------------------------
-        # STATIC VALUES
-        # ---------------------------------------------------
-
-        energy_rate = 8.44
-        demand_charge_rate = 650
-        wheeling_charge_rate = 0.81
-        fac_rate = 0.50
-        tax_rate = 0.29
-        power_factor = 1
-        electricity_duty = "7.50%"
+            st.info(
+                f"Reference Units: "
+                f"{reference_units}"
+            )
 
         # ---------------------------------------------------
-        # GENERATE EXCEL REPORT
+        # GENERATE REPORT
         # ---------------------------------------------------
 
         if st.button("Generate Excel Report"):
@@ -242,105 +223,64 @@ if uploaded_file:
 
                 wb = load_workbook(template_path)
 
-                # ---------------------------------------------------
-                # SELECT SHEETS
-                # ---------------------------------------------------
-
                 input_sheet = wb[wb.sheetnames[0]]
 
-                output_sheet_name = "Bill After Solar_Apr 26"
-
-                if output_sheet_name in wb.sheetnames:
-
-                    output_sheet = wb[output_sheet_name]
-
-                else:
-
-                    output_sheet = wb[wb.sheetnames[1]]
+                output_sheet = wb["Bill After Solar_Apr 26"]
 
                 # ---------------------------------------------------
-                # FIXED VALUES
+                # INPUT VALUES
                 # ---------------------------------------------------
 
                 input_sheet["C2"] = solar_capacity
                 input_sheet["C3"] = plant_load
 
-                # ---------------------------------------------------
-                # TRANSMISSION CHARGES
-                # ---------------------------------------------------
-
-                input_sheet["C9"] = (
-                    float(clean_number(transmission_charges))
-                    if transmission_charges else 0
+                input_sheet["C9"] = float(
+                    clean_number(transmission_charges)
                 )
 
-                # ---------------------------------------------------
-                # BILL VALUES
-                # ---------------------------------------------------
-
-                input_sheet["C14"] = (
-                    float(clean_number(contract_demand))
-                    if contract_demand else 0
+                input_sheet["C14"] = float(
+                    clean_number(contract_demand)
                 )
 
-                input_sheet["C15"] = energy_rate
-                input_sheet["C16"] = demand_charge_rate
-                input_sheet["C17"] = wheeling_charge_rate
-                input_sheet["C18"] = fac_rate
-                input_sheet["C19"] = tax_rate
-                input_sheet["C20"] = power_factor
+                input_sheet["C15"] = 8.44
+                input_sheet["C16"] = 650
+                input_sheet["C17"] = 0.81
+                input_sheet["C18"] = 0.50
+                input_sheet["C19"] = 0.29
+                input_sheet["C20"] = 1
 
-                input_sheet["C21"] = (
-                    float(clean_number(
+                input_sheet["C21"] = float(
+                    clean_number(
                         highest_recorded_msedcl_demand
-                    ))
-                    if highest_recorded_msedcl_demand else 0
+                    )
                 )
 
-                input_sheet["C22"] = electricity_duty
-
-                # ---------------------------------------------------
-                # MANUAL SOLAR GENERATION
-                # ---------------------------------------------------
+                input_sheet["C22"] = "7.50%"
 
                 input_sheet["H25"] = float(
                     current_month_generation
                 )
-
-                # ---------------------------------------------------
-                # MANUAL TOD ZONES
-                # ---------------------------------------------------
 
                 input_sheet["K26"] = float(a_zone)
                 input_sheet["L26"] = float(b_zone)
                 input_sheet["M26"] = float(c_zone)
                 input_sheet["N26"] = float(d_zone)
 
-                # ---------------------------------------------------
-                # OTHER BILL VALUES
-                # ---------------------------------------------------
-
-                input_sheet["C30"] = (
-                    float(clean_number(billed_demand))
-                    if billed_demand else 0
+                input_sheet["C30"] = float(
+                    clean_number(billed_demand)
                 )
 
-                input_sheet["C40"] = (
-                    float(clean_number(reference_units))
-                    if reference_units else 0
+                input_sheet["C40"] = float(
+                    clean_number(reference_units)
                 )
 
                 # ---------------------------------------------------
                 # OUTPUT SHEET VALUES
                 # ---------------------------------------------------
 
-                # C22 = Only Debit Bill Adjustment
-
                 output_sheet["C22"] = float(
                     debit_bill_adjustment
                 )
-
-                # D22 = Debit + Grid Support
 
                 output_sheet["D22"] = (
                     float(debit_bill_adjustment)
@@ -349,14 +289,14 @@ if uploaded_file:
                 )
 
                 # ---------------------------------------------------
-                # FORCE FORMULA RECALCULATION
+                # FORCE RECALCULATION
                 # ---------------------------------------------------
 
                 wb.calculation.fullCalcOnLoad = True
                 wb.calculation.forceFullCalc = True
 
                 # ---------------------------------------------------
-                # SAVE OUTPUT
+                # SAVE FILE
                 # ---------------------------------------------------
 
                 output = BytesIO()
@@ -366,7 +306,155 @@ if uploaded_file:
                 output.seek(0)
 
                 st.success(
-                    "✅ Before vs After Solar Report Generated Successfully"
+                    "✅ Report Generated Successfully"
+                )
+
+                # ---------------------------------------------------
+                # DASHBOARD
+                # ---------------------------------------------------
+
+                st.markdown("---")
+
+                st.header(
+                    "📊 Solar Savings Dashboard"
+                )
+
+                before_solar_bill = (
+                    output_sheet["C32"].value
+                )
+
+                after_solar_bill = (
+                    output_sheet["D32"].value
+                )
+
+                try:
+
+                    before_solar_bill = float(
+                        before_solar_bill
+                    )
+
+                except:
+                    before_solar_bill = 0
+
+                try:
+
+                    after_solar_bill = float(
+                        after_solar_bill
+                    )
+
+                except:
+                    after_solar_bill = 0
+
+                monthly_savings = (
+                    before_solar_bill
+                    -
+                    after_solar_bill
+                )
+
+                savings_percentage = 0
+
+                if before_solar_bill > 0:
+
+                    savings_percentage = (
+                        monthly_savings
+                        /
+                        before_solar_bill
+                    ) * 100
+
+                # ---------------------------------------------------
+                # KPI CARDS
+                # ---------------------------------------------------
+
+                k1, k2, k3 = st.columns(3)
+
+                with k1:
+
+                    st.metric(
+                        "💡 Before Solar Bill",
+                        f"₹ {before_solar_bill:,.0f}"
+                    )
+
+                with k2:
+
+                    st.metric(
+                        "⚡ After Solar Bill",
+                        f"₹ {after_solar_bill:,.0f}"
+                    )
+
+                with k3:
+
+                    st.metric(
+                        "💰 Monthly Savings",
+                        f"₹ {monthly_savings:,.0f}",
+                        f"{savings_percentage:.1f}%"
+                    )
+
+                st.markdown("---")
+
+                # ---------------------------------------------------
+                # BAR CHART
+                # ---------------------------------------------------
+
+                chart_df = pd.DataFrame({
+
+                    "Bill Type": [
+                        "Before Solar",
+                        "After Solar"
+                    ],
+
+                    "Amount": [
+                        before_solar_bill,
+                        after_solar_bill
+                    ]
+
+                })
+
+                fig = px.bar(
+                    chart_df,
+                    x="Bill Type",
+                    y="Amount",
+                    text="Amount",
+                    title="Before vs After Solar Bill"
+                )
+
+                fig.update_traces(
+                    texttemplate='₹ %{text:,.0f}',
+                    textposition='outside'
+                )
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
+
+                # ---------------------------------------------------
+                # PIE CHART
+                # ---------------------------------------------------
+
+                pie_df = pd.DataFrame({
+
+                    "Category": [
+                        "Savings",
+                        "After Solar Bill"
+                    ],
+
+                    "Value": [
+                        monthly_savings,
+                        after_solar_bill
+                    ]
+
+                })
+
+                pie_fig = px.pie(
+                    pie_df,
+                    names="Category",
+                    values="Value",
+                    title="Solar Savings Distribution"
+                )
+
+                st.plotly_chart(
+                    pie_fig,
+                    use_container_width=True
                 )
 
                 # ---------------------------------------------------
@@ -377,13 +465,17 @@ if uploaded_file:
                     label="⬇ Download Excel Report",
                     data=output,
                     file_name="Before_After_Solar_Report.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    mime=(
+                        "application/vnd.openxmlformats-"
+                        "officedocument.spreadsheetml.sheet"
+                    )
                 )
 
             except Exception as excel_error:
 
                 st.error(
-                    f"Excel Generation Error: {excel_error}"
+                    f"Excel Generation Error: "
+                    f"{excel_error}"
                 )
 
     except Exception as e:
