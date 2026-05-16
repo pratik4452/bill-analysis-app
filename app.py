@@ -152,12 +152,18 @@ if uploaded_file:
         st.success("✅ PDF Processed Successfully")
 
         # ---------------------------------------------------
+        # REMOVE LINE BREAKS
+        # ---------------------------------------------------
+
+        single_text = text.replace("\n", " ")
+
+        # ---------------------------------------------------
         # MONTH
         # ---------------------------------------------------
 
         month_match = re.search(
             r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\-\s]?\d{2}',
-            text,
+            single_text,
             re.IGNORECASE
         )
 
@@ -172,7 +178,7 @@ if uploaded_file:
 
         contract_demand = extract_value(
             r'Total\s*Contract\s*Demand\s*\(KVA\)\s*([\d,\.]+)',
-            text
+            single_text
         )
 
         # ---------------------------------------------------
@@ -181,14 +187,14 @@ if uploaded_file:
 
         highest_recorded_msedcl_demand = extract_value(
             r'Highest\s*Recorded\s*MSEDCL\s*Demand\s*([\d,\.]+)',
-            text
+            single_text
         )
 
         if not highest_recorded_msedcl_demand:
 
             highest_recorded_msedcl_demand = extract_value(
                 r'MSEDCL\s*Demand\s*([\d,\.]+)',
-                text
+                single_text
             )
 
         # ---------------------------------------------------
@@ -197,7 +203,7 @@ if uploaded_file:
 
         transmission_charges = extract_value(
             r'Transmission\s*Charges\s*:?\s*₹?\s*([\d,\.]+)',
-            text
+            single_text
         )
 
         # ---------------------------------------------------
@@ -206,7 +212,7 @@ if uploaded_file:
 
         billed_demand = extract_value(
             r'Billed\s*Demand\s*([\d,\.]+)',
-            text
+            single_text
         )
 
         # ---------------------------------------------------
@@ -215,7 +221,7 @@ if uploaded_file:
 
         reference_units = extract_value(
             r'Ref\s*consumption\s*:?\s*([\d,\.]+)',
-            text
+            single_text
         )
 
         # ---------------------------------------------------
@@ -224,7 +230,7 @@ if uploaded_file:
 
         electricity_duty = extract_value(
             r'Electricity\s*Duty\s*[:\-]?\s*([\d\.]+%)',
-            text
+            single_text
         )
 
         if not electricity_duty:
@@ -236,15 +242,33 @@ if uploaded_file:
 
         power_factor = ""
 
-        try:
+        # METHOD 1
+        # 0.996 26 P.F.
 
-            # METHOD 1
+        pf_match = re.search(
+
+            r'(\d+\.\d+)\s+26\s+P\.F',
+
+            single_text,
+
+            re.IGNORECASE
+
+        )
+
+        if pf_match:
+
+            power_factor = pf_match.group(1)
+
+        # METHOD 2
+        # P.F. 0.996
+
+        if not power_factor:
 
             pf_match = re.search(
 
-                r'([\d\.]+)\s+26\s+P\.F\.',
+                r'P\.F\.?\s*[:\-]?\s*(\d+\.\d+)',
 
-                text,
+                single_text,
 
                 re.IGNORECASE
 
@@ -254,49 +278,28 @@ if uploaded_file:
 
                 power_factor = pf_match.group(1)
 
-            # METHOD 2
+        # METHOD 3
+        # Power Factor
 
-            if not power_factor:
+        if not power_factor:
 
-                pf_match = re.search(
+            pf_match = re.search(
 
-                    r'P\.F\.\s*([\d\.]+)',
+                r'Power\s*Factor\s*[:\-]?\s*(\d+\.\d+)',
 
-                    text,
+                single_text,
 
-                    re.IGNORECASE
+                re.IGNORECASE
 
-                )
+            )
 
-                if pf_match:
+            if pf_match:
 
-                    power_factor = pf_match.group(1)
+                power_factor = pf_match.group(1)
 
-            # METHOD 3
+        # DEFAULT
 
-            if not power_factor:
-
-                pf_match = re.search(
-
-                    r'PF\s*([\d\.]+)',
-
-                    text,
-
-                    re.IGNORECASE
-
-                )
-
-                if pf_match:
-
-                    power_factor = pf_match.group(1)
-
-            # DEFAULT
-
-            if not power_factor:
-
-                power_factor = "1"
-
-        except:
+        if not power_factor:
 
             power_factor = "1"
 
