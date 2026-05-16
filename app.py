@@ -98,7 +98,7 @@ def extract_value(pattern, text):
     )
 
     if match:
-        return match.group(1)
+        return match.group(1).strip()
 
     return ""
 
@@ -146,24 +146,34 @@ if uploaded_file:
         st.success("✅ PDF Processed Successfully")
 
         # ---------------------------------------------------
-        # EXTRACT VALUES FROM BILL
+        # DEBUG PDF TEXT
         # ---------------------------------------------------
 
-        # Month
+        with st.expander("View Extracted PDF Text"):
+
+            st.text(text)
+
+        # ---------------------------------------------------
+        # MONTH
+        # ---------------------------------------------------
 
         bill_month = extract_value(
-            r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\-\s]?\d{2}',
+            r'([A-Z][a-z]{2}[-\s]?\d{2})',
             text
         )
 
-        # Contract Demand
+        # ---------------------------------------------------
+        # CONTRACT DEMAND
+        # ---------------------------------------------------
 
         contract_demand = extract_value(
             r'Total\s*Contract\s*Demand\s*\(KVA\)\s*([\d,\.]+)',
             text
         )
 
-        # Maximum Demand
+        # ---------------------------------------------------
+        # MAXIMUM DEMAND
+        # ---------------------------------------------------
 
         highest_recorded_msedcl_demand = extract_value(
             r'Highest\s*Recorded\s*MSEDCL\s*Demand\s*([\d,\.]+)',
@@ -177,21 +187,27 @@ if uploaded_file:
                 text
             )
 
-        # Transmission Charges
+        # ---------------------------------------------------
+        # TRANSMISSION CHARGES
+        # ---------------------------------------------------
 
         transmission_charges = extract_value(
             r'Transmission\s*Charges\s*:?\s*₹?\s*([\d,\.]+)',
             text
         )
 
-        # Billed Demand
+        # ---------------------------------------------------
+        # BILLED DEMAND
+        # ---------------------------------------------------
 
         billed_demand = extract_value(
             r'Billed\s*Demand\s*([\d,\.]+)',
             text
         )
 
-        # Reference Units
+        # ---------------------------------------------------
+        # REFERENCE UNITS
+        # ---------------------------------------------------
 
         reference_units = extract_value(
             r'Ref\s*consumption\s*:?\s*([\d,\.]+)',
@@ -199,45 +215,34 @@ if uploaded_file:
         )
 
         # ---------------------------------------------------
-        # POWER FACTOR EXTRACTION
+        # POWER FACTOR (P.F.)
         # ---------------------------------------------------
 
-        power_factor = ""
+        power_factor = extract_value(
+            r'P\.F\.\s*([\d\.]+)',
+            text
+        )
 
-        pf_patterns = [
+        if not power_factor:
 
-            r'P\.?\s*F\.?\s*[:\-]?\s*([\d\.]+)',
-
-            r'PF\s*[:\-]?\s*([\d\.]+)',
-
-            r'Power\s*Factor\s*[:\-]?\s*([\d\.]+)',
-
-            r'Avg\.?\s*Power\s*Factor\s*[:\-]?\s*([\d\.]+)',
-
-            r'Average\s*Power\s*Factor\s*[:\-]?\s*([\d\.]+)'
-
-        ]
-
-        for pattern in pf_patterns:
-
-            match = re.search(
-                pattern,
-                text,
-                re.IGNORECASE
+            power_factor = extract_value(
+                r'P\.F\s*([\d\.]+)',
+                text
             )
 
-            if match:
+        if not power_factor:
 
-                power_factor = match.group(1)
-
-                break
+            power_factor = extract_value(
+                r'PF\s*([\d\.]+)',
+                text
+            )
 
         if not power_factor:
 
             power_factor = "1"
 
         # ---------------------------------------------------
-        # ELECTRICITY DUTY EXTRACTION
+        # ELECTRICITY DUTY
         # ---------------------------------------------------
 
         electricity_duty = extract_value(
@@ -289,7 +294,7 @@ if uploaded_file:
         with col4:
 
             st.write(
-                "Power Factor:",
+                "P.F.:",
                 power_factor
             )
 
@@ -319,7 +324,7 @@ if uploaded_file:
             try:
 
                 # ---------------------------------------------------
-                # LOAD TEMPLATE
+                # TEMPLATE PATH
                 # ---------------------------------------------------
 
                 template_path = os.path.join(
@@ -327,10 +332,14 @@ if uploaded_file:
                     "bill_template.xlsx"
                 )
 
+                # ---------------------------------------------------
+                # LOAD WORKBOOK
+                # ---------------------------------------------------
+
                 wb = load_workbook(template_path)
 
                 # ---------------------------------------------------
-                # SELECT SHEETS
+                # SHEETS
                 # ---------------------------------------------------
 
                 input_sheet = wb[wb.sheetnames[0]]
@@ -344,60 +353,52 @@ if uploaded_file:
                     output_sheet = input_sheet
 
                 # ---------------------------------------------------
-                # FIXED VALUES
+                # INPUT VALUES
                 # ---------------------------------------------------
 
                 input_sheet["C2"] = solar_capacity
                 input_sheet["C3"] = plant_load
 
-                # ---------------------------------------------------
-                # TRANSMISSION CHARGES
-                # ---------------------------------------------------
-
-                input_sheet["C9"] = (
-                    float(clean_number(transmission_charges))
-                    if transmission_charges else 0
+                input_sheet["C9"] = float(
+                    clean_number(transmission_charges)
                 )
-
-                # ---------------------------------------------------
-                # BILL VALUES
-                # ---------------------------------------------------
 
                 input_sheet["C13"] = bill_month
 
-                input_sheet["C14"] = (
-                    float(clean_number(contract_demand))
-                    if contract_demand else 0
+                input_sheet["C14"] = float(
+                    clean_number(contract_demand)
                 )
 
                 input_sheet["C15"] = energy_rate
+
                 input_sheet["C16"] = demand_charge_rate
+
                 input_sheet["C17"] = wheeling_charge_rate
+
                 input_sheet["C18"] = fac_rate
+
                 input_sheet["C19"] = tax_rate
 
                 # ---------------------------------------------------
-                # POWER FACTOR FROM PDF
+                # P.F.
                 # ---------------------------------------------------
 
-                input_sheet["C20"] = (
-                    float(clean_number(power_factor))
-                    if power_factor else 1
+                input_sheet["C20"] = float(
+                    clean_number(power_factor)
                 )
 
                 # ---------------------------------------------------
                 # MAXIMUM DEMAND
                 # ---------------------------------------------------
 
-                input_sheet["C21"] = (
-                    float(clean_number(
+                input_sheet["C21"] = float(
+                    clean_number(
                         highest_recorded_msedcl_demand
-                    ))
-                    if highest_recorded_msedcl_demand else 0
+                    )
                 )
 
                 # ---------------------------------------------------
-                # ELECTRICITY DUTY FROM PDF
+                # ELECTRICITY DUTY
                 # ---------------------------------------------------
 
                 input_sheet["C22"] = electricity_duty
@@ -415,22 +416,23 @@ if uploaded_file:
                 # ---------------------------------------------------
 
                 input_sheet["K26"] = float(a_zone)
+
                 input_sheet["L26"] = float(b_zone)
+
                 input_sheet["M26"] = float(c_zone)
+
                 input_sheet["N26"] = float(d_zone)
 
                 # ---------------------------------------------------
-                # OTHER BILL VALUES
+                # OTHER VALUES
                 # ---------------------------------------------------
 
-                input_sheet["C30"] = (
-                    float(clean_number(billed_demand))
-                    if billed_demand else 0
+                input_sheet["C30"] = float(
+                    clean_number(billed_demand)
                 )
 
-                input_sheet["C40"] = (
-                    float(clean_number(reference_units))
-                    if reference_units else 0
+                input_sheet["C40"] = float(
+                    clean_number(reference_units)
                 )
 
                 # ---------------------------------------------------
@@ -448,10 +450,11 @@ if uploaded_file:
                 )
 
                 # ---------------------------------------------------
-                # FORCE FORMULA RECALCULATION
+                # FORCE RECALCULATION
                 # ---------------------------------------------------
 
                 wb.calculation.fullCalcOnLoad = True
+
                 wb.calculation.forceFullCalc = True
 
                 # ---------------------------------------------------
