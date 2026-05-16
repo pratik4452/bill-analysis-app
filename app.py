@@ -24,12 +24,6 @@ st.subheader("Before Solar vs After Solar Analysis")
 solar_capacity = 1000
 plant_load = 1800
 
-energy_rate = 8.44
-demand_charge_rate = 650
-wheeling_charge_rate = 0.81
-fac_rate = 0.50
-tax_rate = 0.29
-
 # ---------------------------------------------------
 # MANUAL INPUTS
 # ---------------------------------------------------
@@ -92,36 +86,7 @@ uploaded_file = st.file_uploader(
 )
 
 # ---------------------------------------------------
-# CLEAN NUMBER FUNCTION
-# ---------------------------------------------------
-
-def clean_number(value):
-
-    if value:
-
-        return (
-            str(value)
-            .replace(",", "")
-            .replace("₹", "")
-            .replace("%", "")
-            .strip()
-        )
-
-    return "0"
-
-# ---------------------------------------------------
-# SAFE FLOAT
-# ---------------------------------------------------
-
-def safe_float(value):
-
-    try:
-        return float(clean_number(value))
-    except:
-        return 0
-
-# ---------------------------------------------------
-# EXTRACT VALUE FUNCTION
+# HELPER FUNCTION
 # ---------------------------------------------------
 
 def extract_value(pattern, text):
@@ -136,6 +101,24 @@ def extract_value(pattern, text):
         return match.group(1)
 
     return ""
+
+# ---------------------------------------------------
+# CLEAN NUMBER FUNCTION
+# ---------------------------------------------------
+
+def clean_number(value):
+
+    if value:
+
+        return (
+            str(value)
+            .replace(",", "")
+            .replace("%", "")
+            .replace("₹", "")
+            .strip()
+        )
+
+    return "0"
 
 # ---------------------------------------------------
 # MAIN PROCESS
@@ -163,19 +146,11 @@ if uploaded_file:
         st.success("✅ PDF Processed Successfully")
 
         # ---------------------------------------------------
-        # CLEAN TEXT
+        # CLEAN PDF TEXT
         # ---------------------------------------------------
 
         single_text = text.replace("\n", " ")
         single_text = re.sub(r'\s+', ' ', single_text)
-
-        # ---------------------------------------------------
-        # DEBUG PDF TEXT
-        # ---------------------------------------------------
-
-        st.markdown("## 📄 PDF Extracted Text")
-
-        st.text(single_text)
 
         # ---------------------------------------------------
         # MONTH
@@ -187,10 +162,13 @@ if uploaded_file:
             re.IGNORECASE
         )
 
-        bill_month = (
-            month_match.group(0)
-            if month_match else ""
-        )
+        if month_match:
+
+            bill_month = month_match.group(0)
+
+        else:
+
+            bill_month = ""
 
         # ---------------------------------------------------
         # CONTRACT DEMAND
@@ -205,26 +183,17 @@ if uploaded_file:
         # MAXIMUM DEMAND
         # ---------------------------------------------------
 
-        maximum_demand = extract_value(
+        highest_recorded_msedcl_demand = extract_value(
             r'Highest\s*Recorded\s*MSEDCL\s*Demand\s*([\d,\.]+)',
             single_text
         )
 
-        if not maximum_demand:
+        if not highest_recorded_msedcl_demand:
 
-            maximum_demand = extract_value(
+            highest_recorded_msedcl_demand = extract_value(
                 r'MSEDCL\s*Demand\s*([\d,\.]+)',
                 single_text
             )
-
-        # ---------------------------------------------------
-        # TRANSMISSION CHARGES
-        # ---------------------------------------------------
-
-        transmission_charges = extract_value(
-            r'Transmission\s*Charges.*?([\d,]+\.\d+)',
-            single_text
-        )
 
         # ---------------------------------------------------
         # BILLED DEMAND
@@ -241,6 +210,15 @@ if uploaded_file:
 
         reference_units = extract_value(
             r'Ref\s*consumption\s*:?\s*([\d,\.]+)',
+            single_text
+        )
+
+        # ---------------------------------------------------
+        # TRANSMISSION CHARGES
+        # ---------------------------------------------------
+
+        transmission_charges = extract_value(
+            r'Transmission\s*Charges\s*:?\s*₹?\s*([\d,\.]+)',
             single_text
         )
 
@@ -263,50 +241,72 @@ if uploaded_file:
 
         power_factor = "1"
 
-        pf_patterns = [
+        pf_text = single_text
+
+        # Pattern 1
+        # Example: 0.996 26 P.F.
+
+        match = re.search(
 
             r'(\d\.\d{2,4})\s*26\s*P\.?F',
 
-            r'P\.?F\.?\s*[:\-]?\s*(\d\.\d{2,4})',
+            pf_text,
 
-            r'PF\s*[:\-]?\s*(\d\.\d{2,4})',
+            re.IGNORECASE
 
-            r'Power\s*Factor\s*[:\-]?\s*(\d\.\d{2,4})',
+        )
 
-            r'Average\s*Power\s*Factor\s*[:\-]?\s*(\d\.\d{2,4})',
+        if match:
 
-            r'(\d\.\d{2,4}).{0,20}P\.?F'
-        ]
+            power_factor = match.group(1)
 
-        for pattern in pf_patterns:
+        # Pattern 2
+        # Example: P.F. 0.996
+
+        if power_factor == "1":
 
             match = re.search(
-                pattern,
-                single_text,
+
+                r'P\.?F\.?\s*[:\-]?\s*(\d\.\d{2,4})',
+
+                pf_text,
+
                 re.IGNORECASE
+
             )
 
             if match:
 
                 power_factor = match.group(1)
 
-                break
+        # Pattern 3
+        # Example: Power Factor 0.996
+
+        if power_factor == "1":
+
+            match = re.search(
+
+                r'Power\s*Factor\s*[:\-]?\s*(\d\.\d{2,4})',
+
+                pf_text,
+
+                re.IGNORECASE
+
+            )
+
+            if match:
+
+                power_factor = match.group(1)
 
         # ---------------------------------------------------
-        # VALIDATION
+        # STATIC VALUES
         # ---------------------------------------------------
 
-        try:
-
-            pf_float = float(power_factor)
-
-            if pf_float < 0.5 or pf_float > 1.0:
-
-                power_factor = "1"
-
-        except:
-
-            power_factor = "1"
+        energy_rate = 8.44
+        demand_charge_rate = 650
+        wheeling_charge_rate = 0.81
+        fac_rate = 0.50
+        tax_rate = 0.29
 
         # ---------------------------------------------------
         # DISPLAY DATA
@@ -327,7 +327,7 @@ if uploaded_file:
 
             st.write(
                 "Maximum Demand:",
-                maximum_demand
+                highest_recorded_msedcl_demand
             )
 
             st.write(
@@ -338,7 +338,7 @@ if uploaded_file:
         with col4:
 
             st.write(
-                "P.F.:",
+                "Detected P.F.:",
                 power_factor
             )
 
@@ -368,7 +368,7 @@ if uploaded_file:
             try:
 
                 # ---------------------------------------------------
-                # TEMPLATE PATH
+                # LOAD TEMPLATE
                 # ---------------------------------------------------
 
                 template_path = os.path.join(
@@ -379,7 +379,7 @@ if uploaded_file:
                 wb = load_workbook(template_path)
 
                 # ---------------------------------------------------
-                # SHEETS
+                # SELECT SHEETS
                 # ---------------------------------------------------
 
                 input_sheet = wb[wb.sheetnames[0]]
@@ -409,9 +409,9 @@ if uploaded_file:
                 # BILL VALUES
                 # ---------------------------------------------------
 
-                input_sheet["C14"] = safe_float(
-                    contract_demand
-                )
+                input_sheet["C14"] = float(
+                    clean_number(contract_demand)
+                ) if contract_demand else 0
 
                 input_sheet["C15"] = energy_rate
                 input_sheet["C16"] = demand_charge_rate
@@ -423,17 +423,19 @@ if uploaded_file:
                 # POWER FACTOR
                 # ---------------------------------------------------
 
-                input_sheet["C20"] = safe_float(
-                    power_factor
-                )
+                input_sheet["C20"] = float(
+                    clean_number(power_factor)
+                ) if power_factor else 1
 
                 # ---------------------------------------------------
                 # MAXIMUM DEMAND
                 # ---------------------------------------------------
 
-                input_sheet["C21"] = safe_float(
-                    maximum_demand
-                )
+                input_sheet["C21"] = float(
+                    clean_number(
+                        highest_recorded_msedcl_demand
+                    )
+                ) if highest_recorded_msedcl_demand else 0
 
                 # ---------------------------------------------------
                 # ELECTRICITY DUTY
@@ -445,60 +447,62 @@ if uploaded_file:
                 # TRANSMISSION CHARGES
                 # ---------------------------------------------------
 
-                input_sheet["C9"] = safe_float(
-                    transmission_charges
-                )
+                input_sheet["C9"] = float(
+                    clean_number(transmission_charges)
+                ) if transmission_charges else 0
 
                 # ---------------------------------------------------
                 # SOLAR GENERATION
                 # ---------------------------------------------------
 
-                input_sheet["H25"] = current_month_generation
+                input_sheet["H25"] = float(
+                    current_month_generation
+                )
 
                 # ---------------------------------------------------
                 # TOD ZONES
                 # ---------------------------------------------------
 
-                input_sheet["K26"] = a_zone
-                input_sheet["L26"] = b_zone
-                input_sheet["M26"] = c_zone
-                input_sheet["N26"] = d_zone
+                input_sheet["K26"] = float(a_zone)
+                input_sheet["L26"] = float(b_zone)
+                input_sheet["M26"] = float(c_zone)
+                input_sheet["N26"] = float(d_zone)
 
                 # ---------------------------------------------------
                 # OTHER VALUES
                 # ---------------------------------------------------
 
-                input_sheet["C30"] = safe_float(
-                    billed_demand
-                )
+                input_sheet["C30"] = float(
+                    clean_number(billed_demand)
+                ) if billed_demand else 0
 
-                input_sheet["C40"] = safe_float(
-                    reference_units
-                )
+                input_sheet["C40"] = float(
+                    clean_number(reference_units)
+                ) if reference_units else 0
 
                 # ---------------------------------------------------
                 # OUTPUT SHEET VALUES
                 # ---------------------------------------------------
 
-                output_sheet["C22"] = (
+                output_sheet["C22"] = float(
                     debit_bill_adjustment
                 )
 
                 output_sheet["D22"] = (
-                    debit_bill_adjustment
+                    float(debit_bill_adjustment)
                     +
-                    grid_support_charges
+                    float(grid_support_charges)
                 )
 
                 # ---------------------------------------------------
-                # RECALCULATE EXCEL
+                # FORCE RECALCULATION
                 # ---------------------------------------------------
 
                 wb.calculation.fullCalcOnLoad = True
                 wb.calculation.forceFullCalc = True
 
                 # ---------------------------------------------------
-                # SAVE FILE
+                # SAVE OUTPUT
                 # ---------------------------------------------------
 
                 output = BytesIO()
@@ -508,7 +512,7 @@ if uploaded_file:
                 output.seek(0)
 
                 st.success(
-                    "✅ Excel Report Generated Successfully"
+                    "✅ Before vs After Solar Report Generated Successfully"
                 )
 
                 # ---------------------------------------------------
