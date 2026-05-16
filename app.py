@@ -94,7 +94,7 @@ def extract_value(pattern, text):
     match = re.search(
         pattern,
         text,
-        re.IGNORECASE | re.DOTALL
+        re.IGNORECASE | re.MULTILINE
     )
 
     if match:
@@ -113,8 +113,8 @@ def clean_number(value):
         return (
             str(value)
             .replace(",", "")
-            .replace("%", "")
             .replace("₹", "")
+            .replace("%", "")
             .strip()
         )
 
@@ -149,7 +149,7 @@ if uploaded_file:
         # DEBUG PDF TEXT
         # ---------------------------------------------------
 
-        with st.expander("View Extracted PDF Text"):
+        with st.expander("View Full Extracted PDF Text"):
 
             st.text(text)
 
@@ -158,7 +158,7 @@ if uploaded_file:
         # ---------------------------------------------------
 
         bill_month = extract_value(
-            r'([A-Z][a-z]{2}[-\s]?\d{2})',
+            r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-\s]?\d{2}',
             text
         )
 
@@ -192,7 +192,7 @@ if uploaded_file:
         # ---------------------------------------------------
 
         transmission_charges = extract_value(
-            r'Transmission\s*Charges\s*:?\s*₹?\s*([\d,\.]+)',
+            r'Transmission\s*Charges.*?([\d,]+\.\d+)',
             text
         )
 
@@ -215,27 +215,75 @@ if uploaded_file:
         )
 
         # ---------------------------------------------------
-        # POWER FACTOR (P.F.)
+        # POWER FACTOR EXTRACTION
         # ---------------------------------------------------
 
-        power_factor = extract_value(
-            r'P\.F\.\s*([\d\.]+)',
-            text
-        )
+        power_factor = ""
+
+        pf_patterns = [
+
+            r'P\.F\.\s*[:\-]?\s*([\d\.]+)',
+
+            r'P\s*\.?\s*F\s*\.?\s*[:\-]?\s*([\d\.]+)',
+
+            r'PF\s*[:\-]?\s*([\d\.]+)',
+
+            r'Power\s*Factor\s*[:\-]?\s*([\d\.]+)',
+
+            r'AVG\s*P\.F\.\s*[:\-]?\s*([\d\.]+)',
+
+            r'Average\s*Power\s*Factor\s*[:\-]?\s*([\d\.]+)'
+        ]
+
+        for pattern in pf_patterns:
+
+            pf_match = re.search(
+                pattern,
+                text,
+                re.IGNORECASE
+            )
+
+            if pf_match:
+
+                power_factor = pf_match.group(1)
+
+                break
+
+        # ---------------------------------------------------
+        # SMART FALLBACK
+        # ---------------------------------------------------
 
         if not power_factor:
 
-            power_factor = extract_value(
-                r'P\.F\s*([\d\.]+)',
+            all_decimal_values = re.findall(
+                r'\b0\.\d+\b',
                 text
             )
 
-        if not power_factor:
+            if all_decimal_values:
 
-            power_factor = extract_value(
-                r'PF\s*([\d\.]+)',
-                text
-            )
+                possible_pf = []
+
+                for val in all_decimal_values:
+
+                    try:
+
+                        num = float(val)
+
+                        if 0.80 <= num <= 1.00:
+
+                            possible_pf.append(val)
+
+                    except:
+                        pass
+
+                if possible_pf:
+
+                    power_factor = possible_pf[0]
+
+        # ---------------------------------------------------
+        # FINAL DEFAULT
+        # ---------------------------------------------------
 
         if not power_factor:
 
@@ -265,7 +313,7 @@ if uploaded_file:
         tax_rate = 0.29
 
         # ---------------------------------------------------
-        # DISPLAY DATA
+        # DISPLAY EXTRACTED DATA
         # ---------------------------------------------------
 
         st.markdown("## 📋 Extracted Bill Data")
@@ -324,17 +372,13 @@ if uploaded_file:
             try:
 
                 # ---------------------------------------------------
-                # TEMPLATE PATH
+                # LOAD TEMPLATE
                 # ---------------------------------------------------
 
                 template_path = os.path.join(
                     "templates",
                     "bill_template.xlsx"
                 )
-
-                # ---------------------------------------------------
-                # LOAD WORKBOOK
-                # ---------------------------------------------------
 
                 wb = load_workbook(template_path)
 
@@ -370,17 +414,13 @@ if uploaded_file:
                 )
 
                 input_sheet["C15"] = energy_rate
-
                 input_sheet["C16"] = demand_charge_rate
-
                 input_sheet["C17"] = wheeling_charge_rate
-
                 input_sheet["C18"] = fac_rate
-
                 input_sheet["C19"] = tax_rate
 
                 # ---------------------------------------------------
-                # P.F.
+                # POWER FACTOR
                 # ---------------------------------------------------
 
                 input_sheet["C20"] = float(
@@ -416,11 +456,8 @@ if uploaded_file:
                 # ---------------------------------------------------
 
                 input_sheet["K26"] = float(a_zone)
-
                 input_sheet["L26"] = float(b_zone)
-
                 input_sheet["M26"] = float(c_zone)
-
                 input_sheet["N26"] = float(d_zone)
 
                 # ---------------------------------------------------
@@ -454,11 +491,10 @@ if uploaded_file:
                 # ---------------------------------------------------
 
                 wb.calculation.fullCalcOnLoad = True
-
                 wb.calculation.forceFullCalc = True
 
                 # ---------------------------------------------------
-                # SAVE OUTPUT
+                # SAVE FILE
                 # ---------------------------------------------------
 
                 output = BytesIO()
@@ -468,7 +504,7 @@ if uploaded_file:
                 output.seek(0)
 
                 st.success(
-                    "✅ Before vs After Solar Report Generated Successfully"
+                    "✅ Excel Report Generated Successfully"
                 )
 
                 # ---------------------------------------------------
